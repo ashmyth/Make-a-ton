@@ -2,35 +2,47 @@
 {% block title %}{{ invoice.invoice_number }}{% endblock %}
 {% block content %}
 <div class="card">
-  <h2 style="margin-top:0">{{ invoice.invoice_number }}
-    <span class="badge {{ invoice.status }}">{{ invoice.get_status_display }}</span>
-    {% if invoice.email_sent_at %}<span class="badge sent">Sent {{ invoice.email_sent_at|date:"d M Y H:i" }}</span>
-    {% else %}<span class="badge unsent">Not sent</span>{% endif %}
-  </h2>
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap;">
+    <div>
+      <h2 style="margin:0 0 8px 0">{{ invoice.invoice_number }}
+        <span class="badge {{ invoice.status }}">{{ invoice.get_status_display }}</span>
+        {% if invoice.is_partially_paid %}<span class="badge" style="background:#e0e7ff; color:#3730a3;">Partially Paid</span>{% endif %}
+        {% if invoice.is_overdue %}<span class="badge" style="background:#fee2e2; color:#991b1b;">Overdue</span>{% endif %}
+        {% if invoice.email_sent_at %}<span class="badge sent">Sent {{ invoice.email_sent_at|date:"d M Y H:i" }}</span>
+        {% else %}<span class="badge unsent">Not sent</span>{% endif %}
+      </h2>
+      <p style="margin:4px 0 16px 0; color:#555;">
+        <b>Customer:</b> {{ invoice.customer_name }} &middot; <b>Email:</b> {{ invoice.customer_email }}<br>
+        {% if invoice.subscription_number %}<b>Subscription:</b> {{ invoice.subscription_number }}{% endif %}
+        {% if invoice.period_start %}({{ invoice.period_start }} &ndash; {{ invoice.period_end }}){% endif %}<br>
+        <b>Issue Date:</b> {{ invoice.issue_date }} &middot; <b>Due Date:</b> {{ invoice.due_date }}<br>
+        {% if invoice.sent_by %}<b>Approved & Sent by:</b> {{ invoice.sent_by }}{% endif %}
+      </p>
+    </div>
+    <div style="display:flex; gap:8px; margin-bottom:12px;">
+      <a class="btn secondary" href="{% url 'billing:invoice_pdf' invoice.pk %}" target="_blank">Preview PDF</a>
+      <button class="btn secondary" onclick="window.print()">Print</button>
 
-  <p>
-    <b>Will be emailed to:</b> {{ invoice.customer_email }}<br>
-    <b>Customer:</b> {{ invoice.customer_name }}<br>
-    <b>Subscription:</b> {{ invoice.subscription_number }}
-    {% if invoice.period_start %}({{ invoice.period_start }} &ndash; {{ invoice.period_end }}){% endif %}<br>
-    <b>Issue:</b> {{ invoice.issue_date }} &middot; <b>Due:</b> {{ invoice.due_date }}<br>
-    {% if invoice.sent_by %}<b>Sent by:</b> {{ invoice.sent_by }}{% endif %}
-  </p>
+      {% if invoice.status != "cancelled" %}
+        {% if perms.billing.send_invoice %}
+          <form method="post" action="{% url 'billing:invoice_send' invoice.pk %}" style="display:inline"
+                onsubmit="return confirm('Send {{ invoice.invoice_number }} to {{ invoice.customer_email }}?');">
+            {% csrf_token %}
+            {% if invoice.email_sent_at %}<input type="hidden" name="resend" value="1">{% endif %}
+            <button class="btn" type="submit">{% if invoice.email_sent_at %}Resend to Customer{% else %}Send to Customer{% endif %}</button>
+          </form>
+        {% endif %}
 
-  <a class="btn secondary" href="{% url 'billing:invoice_pdf' invoice.pk %}" target="_blank">Preview PDF</a>
-
-  {% if invoice.status != "cancelled" %}
-    {% if perms.billing.send_invoice %}
-      <form method="post" action="{% url 'billing:invoice_send' invoice.pk %}" style="display:inline"
-            onsubmit="return confirm('Send {{ invoice.invoice_number }} to {{ invoice.customer_email }}?');">
-        {% csrf_token %}
-        {% if invoice.email_sent_at %}<input type="hidden" name="resend" value="1">{% endif %}
-        <button class="btn" type="submit">{% if invoice.email_sent_at %}Resend to customer{% else %}Send to customer{% endif %}</button>
-      </form>
-    {% else %}
-      <small>You lack permission to send invoices.</small>
-    {% endif %}
-  {% endif %}
+        {% if invoice.can_cancel and perms.billing.change_invoice %}
+          <form method="post" action="{% url 'billing:invoice_cancel' invoice.pk %}" style="display:inline"
+                onsubmit="return confirm('Are you sure you want to cancel invoice {{ invoice.invoice_number }}?');">
+            {% csrf_token %}
+            <button class="btn" style="background:#dc2626;" type="submit">Cancel Invoice</button>
+          </form>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
 </div>
 
 <div class="card">
@@ -50,8 +62,8 @@
     <tr><td colspan="5" class="r">Discount</td><td class="r">-{{ invoice.discount_total }}</td></tr>
     <tr><td colspan="5" class="r">Tax</td><td class="r">{{ invoice.tax_total }}</td></tr>
     <tr><td colspan="5" class="r"><b>Total ({{ invoice.currency }})</b></td><td class="r"><b>{{ invoice.total }}</b></td></tr>
-    <tr><td colspan="5" class="r">Paid</td><td class="r">{{ invoice.amount_paid }}</td></tr>
-    <tr><td colspan="5" class="r"><b>Balance due</b></td><td class="r"><b>{{ invoice.balance_due }}</b></td></tr>
+    <tr><td colspan="5" class="r">Amount Paid</td><td class="r">{{ invoice.amount_paid }}</td></tr>
+    <tr><td colspan="5" class="r"><b>Outstanding Balance Due</b></td><td class="r"><b>{{ invoice.outstanding_balance }}</b></td></tr>
   </table>
 </div>
 

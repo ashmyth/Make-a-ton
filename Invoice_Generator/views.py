@@ -1,8 +1,9 @@
-"""FEATURE 12: staff dashboard. Review generated invoices, click Send.
+"""FEATURE 12: staff dashboard. Review generated invoices, send, cancel, and preview.
 
 Permissions (enforced in backend, not just hidden buttons):
   view list/detail/pdf -> Django perm  billing.view_invoice
   send / resend        -> Django perm  billing.send_invoice
+  cancel               -> Django perm  billing.change_invoice
 Superuser = all. Grant others via Django admin -> Groups.
 """
 from django.contrib import messages
@@ -83,4 +84,22 @@ def invoice_send(request, pk):
             messages.success(request, f"{invoice.invoice_number} sent to {invoice.customer_email}.")
         else:
             messages.error(request, "Email failed. See send log below, then try again.")
+    return redirect("billing:invoice_detail", pk=invoice.pk)
+
+
+@login_required
+@permission_required("billing.change_invoice", raise_exception=True)
+@require_POST
+def invoice_cancel(request, pk):
+    """Cancel an invoice per PRD §7.9 (allowed only if no payments are allocated)."""
+    invoice = get_object_or_404(Invoice, pk=pk)
+    if not invoice.can_cancel:
+        messages.error(
+            request,
+            "Cannot cancel invoice: either it is already cancelled or payments have been allocated."
+        )
+    else:
+        invoice.status = InvoiceStatus.CANCELLED
+        invoice.save(update_fields=["status", "updated_at"])
+        messages.success(request, f"Invoice {invoice.invoice_number} has been cancelled.")
     return redirect("billing:invoice_detail", pk=invoice.pk)

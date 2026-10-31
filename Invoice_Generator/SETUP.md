@@ -1,8 +1,8 @@
 # Billing app setup (Django + Supabase Postgres + Supabase Storage)
 
 ## 1. Install
-```
-pip install django "psycopg[binary]" dj-database-url python-dotenv supabase xhtml2pdf pytest
+```bash
+pip install django "psycopg[binary]" dj-database-url python-dotenv supabase xhtml2pdf python-dateutil pytest
 ```
 
 ## 2. settings.py additions
@@ -40,7 +40,7 @@ DEFAULT_FROM_EMAIL = "Brightloop <billing@yourdomain.com>"
 Dev tip: `EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"` prints mail in terminal.
 
 ## 3. .env
-```
+```env
 DATABASE_URL=postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
 SUPABASE_URL=https://<ref>.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=<service_role key>
@@ -51,7 +51,7 @@ EMAIL_HOST_PASSWORD=...
 Add `.env` to `.gitignore`.
 
 ## 4. Migrate
-```
+```bash
 python manage.py makemigrations billing
 python manage.py migrate
 ```
@@ -71,15 +71,22 @@ Dashboard: `/staff/invoices/`
 Permissions (Django admin -> Groups):
 - `billing | invoice | Can view invoice`  -> see list, detail, PDF preview
 - `billing | invoice | Can send invoices to customers` -> Send / Resend button
+- `billing | invoice | Can change invoice` -> Cancel invoice button
 Superuser has all. Customers must have neither.
 
-## 7. Schedule retry (missing invoices only)
-```
-*/5 * * * *  cd /app && python manage.py retry_failed_invoices
-```
-Emails are never auto-sent or auto-retried. Staff clicks Send.
+## 7. Recurring Billing & Recovery Commands
+- **Recurring billing sweep (BILL-01..08):**
+  ```bash
+  python manage.py run_billing_sweep
+  ```
+  Runs across active, running subscriptions, creates draft invoices, advances checkpoints atomically, and logs errors in `BillingFailure`.
+- **Payment recovery (missing invoices for direct payments):**
+  ```bash
+  python manage.py retry_failed_invoices
+  ```
+Emails are never auto-sent. Staff reviews draft invoices in `/staff/invoices/` and clicks Send.
 
 ## 8. Test
-```
-pytest billing/tests
+```bash
+pytest Invoice_Generator/tests
 ```
