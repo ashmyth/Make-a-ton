@@ -1,0 +1,52 @@
+{% extends "billing/_staff_base.html" %}
+{% block content %}
+<div class="card">
+  <h2 style="margin-top:0">Invoices
+    {% if pending_count %}<span class="badge unsent">{{ pending_count }} awaiting review</span>{% endif %}
+  </h2>
+  <form method="get" class="filters">
+    <input name="q" value="{{ q }}" placeholder="Number, customer, email, subscription">
+    <select name="status">
+      <option value="">All statuses</option>
+      {% for value, label in statuses %}
+        <option value="{{ value }}" {% if value == f_status %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="sent">
+      <option value="">Sent + unsent</option>
+      <option value="no" {% if f_sent == "no" %}selected{% endif %}>Not sent yet</option>
+      <option value="yes" {% if f_sent == "yes" %}selected{% endif %}>Sent</option>
+    </select>
+    <button class="btn" type="submit">Filter</button>
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <tr>
+      <th>Invoice</th><th>Customer</th><th>Subscription</th><th>Date</th>
+      <th class="r">Total</th><th class="r">Balance</th><th>Status</th><th>Email</th>
+    </tr>
+    {% for inv in page %}
+    <tr>
+      <td><a href="{% url 'billing:invoice_detail' inv.pk %}">{{ inv.invoice_number }}</a></td>
+      <td>{{ inv.customer_name }}<br><small>{{ inv.customer_email }}</small></td>
+      <td>{{ inv.subscription_number }}</td>
+      <td>{{ inv.issue_date }}</td>
+      <td class="r">{{ inv.currency }} {{ inv.total }}</td>
+      <td class="r">{{ inv.balance_due }}</td>
+      <td><span class="badge {{ inv.status }}">{{ inv.get_status_display }}</span></td>
+      <td>{% if inv.email_sent_at %}<span class="badge sent">Sent</span>{% else %}<span class="badge unsent">Not sent</span>{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="8">No invoices.</td></tr>
+    {% endfor %}
+  </table>
+
+  <p>
+    {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}&q={{ q }}&status={{ f_status }}&sent={{ f_sent }}">&laquo; Prev</a>{% endif %}
+    Page {{ page.number }} / {{ page.paginator.num_pages }}
+    {% if page.has_next %}<a href="?page={{ page.next_page_number }}&q={{ q }}&status={{ f_status }}&sent={{ f_sent }}">Next &raquo;</a>{% endif %}
+  </p>
+</div>
+{% endblock %}
