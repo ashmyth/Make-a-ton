@@ -3,10 +3,10 @@ import { Navbar } from "./components/Navbar";
 import { CustomerPortal } from "./components/CustomerPortal";
 import { FinanceConsole } from "./components/FinanceConsole";
 import { LoginModal } from "./components/LoginModal";
-import { api } from "./api";
+import { api, type User } from "./api";
 
 export function App() {
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeView, setActiveView] = useState<"portal" | "finance">("portal");
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
@@ -37,7 +37,7 @@ export function App() {
     setIsLoginModalOpen(true);
   };
 
-  const handleLoginSuccess = (user: any) => {
+  const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
     if (user.role === "FINANCE" || user.role === "ADMINISTRATOR") {
       setActiveView("finance");

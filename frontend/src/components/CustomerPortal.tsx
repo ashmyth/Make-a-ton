@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { api } from "../api";
+import {
+  api,
+  ApiError,
+  type PortalOverviewData,
+  type Subscription,
+  type Invoice,
+  type Payment,
+  type CustomerRequest,
+} from "../api";
 import {
   Layers,
   Download,
@@ -11,12 +19,25 @@ import {
   RotateCw,
 } from "lucide-react";
 
+function formatApiError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    if (err.fieldErrors) {
+      return Object.entries(err.fieldErrors)
+        .map(([field, msgs]) => `${field}: ${msgs.join(" ")}`)
+        .join(" | ");
+    }
+    return err.message;
+  }
+  if (err instanceof Error) return err.message;
+  return fallback;
+}
+
 export const CustomerPortal: React.FC = () => {
-  const [overview, setOverview] = useState<any>(null);
-  const [subscriptions, setSubscriptions] = useState<any[]>([]);
-  const [invoices, setInvoices] = useState<any[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
-  const [requests, setRequests] = useState<any[]>([]);
+  const [overview, setOverview] = useState<PortalOverviewData | null>(null);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [requests, setRequests] = useState<CustomerRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +45,7 @@ export const CustomerPortal: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"overview" | "invoices" | "subscriptions" | "payments" | "profile">("overview");
 
   // Request modal
-  const [requestModalSub, setRequestModalSub] = useState<any>(null);
+  const [requestModalSub, setRequestModalSub] = useState<Subscription | null>(null);
   const [requestType, setRequestType] = useState<"pause" | "cancel" | "renew">("pause");
   const [requestNotes, setRequestNotes] = useState("");
   const [submittingRequest, setSubmittingRequest] = useState(false);
@@ -72,8 +93,8 @@ export const CustomerPortal: React.FC = () => {
           billing_country: "",
         });
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load portal information. Please ensure you are logged in.");
+    } catch (err: unknown) {
+      setError(formatApiError(err, "Failed to load portal information. Please ensure you are logged in."));
     } finally {
       setLoading(false);
     }
@@ -83,7 +104,7 @@ export const CustomerPortal: React.FC = () => {
     fetchPortalData();
   }, []);
 
-  const handleOpenRequest = (sub: any, type: "pause" | "cancel" | "renew") => {
+  const handleOpenRequest = (sub: Subscription, type: "pause" | "cancel" | "renew") => {
     setRequestModalSub(sub);
     setRequestType(type);
     setRequestNotes("");
@@ -105,8 +126,8 @@ export const CustomerPortal: React.FC = () => {
         setRequestModalSub(null);
         fetchPortalData();
       }, 1500);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(formatApiError(err, "Failed to submit request."));
     } finally {
       setSubmittingRequest(false);
     }
@@ -120,8 +141,8 @@ export const CustomerPortal: React.FC = () => {
       await api.portal.updateProfile(profileForm);
       setProfileSuccess("Profile updated successfully.");
       await fetchPortalData();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(formatApiError(err, "Failed to save profile."));
     } finally {
       setSavingProfile(false);
     }
@@ -240,11 +261,11 @@ export const CustomerPortal: React.FC = () => {
                 <span style={{ fontSize: "12px", color: "#afafaf", textTransform: "uppercase" }}>Pending Invoices</span>
                 <Clock size={16} color="#fff313" />
               </div>
-              <div style={{ fontSize: "36px", fontWeight: 300, color: metrics?.unpaid_invoices_count > 0 ? "#fff313" : "#00e676", margin: "12px 0 4px" }}>
+              <div style={{ fontSize: "36px", fontWeight: 300, color: (metrics?.unpaid_invoices_count ?? 0) > 0 ? "#fff313" : "#00e676", margin: "12px 0 4px" }}>
                 {metrics?.unpaid_invoices_count || 0}
               </div>
               <p style={{ fontSize: "13px", color: "#888888" }}>
-                {metrics?.unpaid_invoices_count > 0 ? "Awaiting settlement / bank transfer" : "All accounts up to date"}
+                {(metrics?.unpaid_invoices_count ?? 0) > 0 ? "Awaiting settlement / bank transfer" : "All accounts up to date"}
               </p>
             </div>
 

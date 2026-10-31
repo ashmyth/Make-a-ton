@@ -2,12 +2,16 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from django.contrib.auth import authenticate, login, logout
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.utils.decorators import method_decorator
 
 
+@method_decorator(ensure_csrf_cookie, name="dispatch")
 class CurrentUserView(APIView):
     """
     Returns authenticated user details matching Teammate 1 contract:
     { id, email, first_name, last_name, full_name, role, is_active, customer_id }
+    Also primes the `csrftoken` cookie for safe subsequent state-modifying requests.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -25,6 +29,7 @@ class CurrentUserView(APIView):
         })
 
 
+@method_decorator(ensure_csrf_cookie, name="dispatch")
 class LoginView(APIView):
     """Simple session login for console staff and portal customers."""
     permission_classes = [permissions.AllowAny]
@@ -55,3 +60,11 @@ class LogoutView(APIView):
         logout(request)
         return Response({"detail": "Logged out successfully."})
 
+
+@method_decorator(ensure_csrf_cookie, name="dispatch")
+class CSRFTokenView(APIView):
+    """Dedicated endpoint to obtain/refresh the CSRF cookie."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        return Response({"detail": "CSRF cookie set."})

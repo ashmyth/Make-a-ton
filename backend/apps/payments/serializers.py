@@ -38,7 +38,7 @@ class RecordPaymentInputSerializer(serializers.Serializer):
     invoice_id = serializers.UUIDField(required=True)
     amount = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal("0.01"), required=True)
     method = serializers.ChoiceField(choices=PaymentMethod.choices, default=PaymentMethod.BANK_TRANSFER)
-    idempotency_key = serializers.CharField(max_length=64, required=True)
+    idempotency_key = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")
     external_reference = serializers.CharField(max_length=100, required=False, allow_blank=True, default="")
     notes = serializers.CharField(required=False, allow_blank=True, default="")
 

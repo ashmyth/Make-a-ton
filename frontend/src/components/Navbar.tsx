@@ -1,8 +1,9 @@
 import React from "react";
 import { LogOut } from "lucide-react";
+import type { User } from "../api";
 
 interface NavbarProps {
-  currentUser: any;
+  currentUser: User | null;
   activeView: "portal" | "finance";
   onSwitchView: (view: "portal" | "finance") => void;
   onLogout: () => void;

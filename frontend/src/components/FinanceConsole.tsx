@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { api } from "../api";
+import { api, ApiError, type DashboardMetrics, type Invoice, type Payment } from "../api";
 import {
   TrendingUp,
   DollarSign,
@@ -13,10 +13,23 @@ import {
   FileText,
 } from "lucide-react";
 
+function formatApiError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    if (err.fieldErrors) {
+      return Object.entries(err.fieldErrors)
+        .map(([field, msgs]) => `${field}: ${msgs.join(" ")}`)
+        .join(" | ");
+    }
+    return err.message;
+  }
+  if (err instanceof Error) return err.message;
+  return fallback;
+}
+
 export const FinanceConsole: React.FC = () => {
-  const [metrics, setMetrics] = useState<any>(null);
-  const [invoices, setInvoices] = useState<any[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,11 +48,12 @@ export const FinanceConsole: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
   const [externalRef, setExternalRef] = useState("");
   const [paymentNotes, setPaymentNotes] = useState("");
+  const [paymentIdempotencyKey, setPaymentIdempotencyKey] = useState("");
   const [submittingPayment, setSubmittingPayment] = useState(false);
   const [paymentFormError, setPaymentFormError] = useState<string | null>(null);
 
   // Reverse Payment Modal
-  const [reversalTarget, setReversalTarget] = useState<any>(null);
+  const [reversalTarget, setReversalTarget] = useState<Payment | null>(null);
   const [reversalReason, setReversalReason] = useState("");
   const [submittingReversal, setSubmittingReversal] = useState(false);
   const [reversalError, setReversalError] = useState<string | null>(null);
@@ -48,21 +62,22 @@ export const FinanceConsole: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const params: Record<string, string> = {};
-      if (startDate) params.start_date = startDate;
-      if (endDate) params.end_date = endDate;
-
       const [metricsData, invoicesData, paymentsData] = await Promise.all([
-        api.finance.getDashboardMetrics(params),
-        api.finance.getInvoicesReport(statusFilter ? { status: statusFilter } : {}),
+        api.finance.getDashboardMetrics({
+          start_date: startDate || undefined,
+          end_date: endDate || undefined,
+        }),
+        api.finance.getInvoicesReport({
+          status: statusFilter || undefined,
+        }),
         api.finance.getPaymentsReport(),
       ]);
 
       setMetrics(metricsData);
       setInvoices(invoicesData);
       setPayments(paymentsData);
-    } catch (err: any) {
-      setError(err.message || "Failed to load finance data. Ensure you are signed in as Finance or Admin staff.");
+    } catch (err: unknown) {
+      setError(formatApiError(err, "Failed to load finance data. Ensure you are signed in as Finance or Admin staff."));
     } finally {
       setLoading(false);
     }
@@ -80,6 +95,9 @@ export const FinanceConsole: React.FC = () => {
     setPaymentMethod("bank_transfer");
     setExternalRef("");
     setPaymentNotes("");
+    // Generate idempotency key ONCE when the modal opens; reuse on retries
+    const newKey = `pay-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    setPaymentIdempotencyKey(newKey);
     setIsRecordModalOpen(true);
   };
 
@@ -89,20 +107,22 @@ export const FinanceConsole: React.FC = () => {
     setSubmittingPayment(true);
 
     try {
-      const idempotencyKey = `pay-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-      await api.finance.recordPayment({
-        invoice_id: selectedInvoiceId,
-        amount: parseFloat(paymentAmount),
-        method: paymentMethod,
-        idempotency_key: idempotencyKey,
-        external_reference: externalRef,
-        notes: paymentNotes,
-      });
+      await api.finance.recordPayment(
+        {
+          invoice_id: selectedInvoiceId,
+          amount: paymentAmount.trim(), // Strict decimal string, no float parsing
+          method: paymentMethod,
+          external_reference: externalRef || undefined,
+          notes: paymentNotes || undefined,
+        },
+        paymentIdempotencyKey,
+      );
 
       setIsRecordModalOpen(false);
+      setPaymentIdempotencyKey("");
       await fetchData();
-    } catch (err: any) {
-      setPaymentFormError(err.message || "Failed to record payment.");
+    } catch (err: unknown) {
+      setPaymentFormError(formatApiError(err, "Failed to record payment."));
     } finally {
       setSubmittingPayment(false);
     }
@@ -115,12 +135,12 @@ export const FinanceConsole: React.FC = () => {
     setSubmittingReversal(true);
 
     try {
-      await api.finance.reversePayment(reversalTarget.id, reversalReason);
+      await api.finance.reversePayment(reversalTarget.id, reversalReason.trim());
       setReversalTarget(null);
       setReversalReason("");
       await fetchData();
-    } catch (err: any) {
-      setReversalError(err.message || "Failed to reverse payment.");
+    } catch (err: unknown) {
+      setReversalError(formatApiError(err, "Failed to reverse payment."));
     } finally {
       setSubmittingReversal(false);
     }
@@ -230,7 +250,7 @@ export const FinanceConsole: React.FC = () => {
           </div>
 
           {/* 6. Overdue Balance */}
-          <div className="card-carbon" style={{ borderColor: metrics.overdue_balance > 0 ? "#ff4d4d" : "#4b4b4b" }}>
+          <div className="card-carbon" style={{ borderColor: parseFloat(metrics.overdue_balance || "0") > 0 ? "#ff4d4d" : "#4b4b4b" }}>
             <div style={{ display: "flex", justifyContent: "space-between", color: "#ff4d4d", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
               <span>Overdue Debt</span>
               <AlertCircle size={14} color="#ff4d4d" />

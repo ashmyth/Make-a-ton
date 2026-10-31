@@ -152,3 +152,21 @@ class PaymentServiceTests(TestCase):
         self.assertEqual(self.invoice.outstanding_balance, Decimal("1000.00"))
         self.assertEqual(self.invoice.status, InvoiceStatus.CONFIRMED)
 
+    def test_record_payment_api_with_idempotency_header(self):
+        """API allows passing Idempotency-Key via HTTP header."""
+        self.client.force_login(self.staff_user)
+        resp = self.client.post(
+            "/api/v1/payments/",
+            {
+                "invoice_id": str(self.invoice.id),
+                "amount": "250.00",
+                "method": "upi",
+                "notes": "UPI via header test",
+            },
+            HTTP_IDEMPOTENCY_KEY="hdr-unique-key-101",
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["idempotency_key"], "hdr-unique-key-101")
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.amount_paid, Decimal("250.00"))
+

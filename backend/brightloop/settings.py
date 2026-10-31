@@ -105,6 +105,19 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
+# CSRF & Session settings for same-origin proxy and dev environments
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
+CSRF_COOKIE_HTTPONLY = False  # Allows frontend JS to read csrftoken cookie for X-CSRFToken header
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
+
 # Billing & Email settings
 BILLING_PAYMENT_MODEL = 'payments.Payment'
 BILLING_COMPANY_NAME = 'Brightloop'

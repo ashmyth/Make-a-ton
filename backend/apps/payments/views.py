@@ -52,13 +52,23 @@ class PaymentListCreateView(generics.ListCreateAPIView):
         input_serializer.is_valid(raise_exception=True)
         data = input_serializer.validated_data
 
+        idempotency_key = (
+            request.headers.get("Idempotency-Key", "").strip()
+            or data.get("idempotency_key", "").strip()
+        )
+        if not idempotency_key:
+            return Response(
+                {"idempotency_key": ["This field or the Idempotency-Key header is required."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
             payment = record_payment(
                 invoice_id=data["invoice_id"],
                 amount=data["amount"],
                 method=data["method"],
                 recorded_by=request.user,
-                idempotency_key=data["idempotency_key"],
+                idempotency_key=idempotency_key,
                 external_reference=data.get("external_reference", ""),
                 notes=data.get("notes", ""),
             )

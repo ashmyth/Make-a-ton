@@ -1,11 +1,24 @@
 import React, { useState } from "react";
-import { api } from "../api";
+import { api, ApiError, type User } from "../api";
 import { X } from "lucide-react";
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (user: any) => void;
+  onSuccess: (user: User) => void;
+}
+
+function formatLoginError(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.fieldErrors) {
+      return Object.entries(err.fieldErrors)
+        .map(([f, msgs]) => `${f}: ${msgs.join(" ")}`)
+        .join(" | ");
+    }
+    return err.message;
+  }
+  if (err instanceof Error) return err.message;
+  return "Failed to sign in.";
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess }) => {
@@ -24,8 +37,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
       const user = await api.auth.login({ email, password });
       onSuccess(user);
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to log in.");
+    } catch (err: unknown) {
+      setError(formatLoginError(err));
     } finally {
       setLoading(false);
     }
@@ -40,8 +53,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
       const user = await api.auth.login({ email: quickEmail, password: quickPass });
       onSuccess(user);
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to log in.");
+    } catch (err: unknown) {
+      setError(formatLoginError(err));
     } finally {
       setLoading(false);
     }
