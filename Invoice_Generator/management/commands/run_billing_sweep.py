@@ -38,3 +38,4 @@ class Command(BaseCommand):
                 f"{len(results['failed'])} failures recorded."
             )
         )
+

@@ -76,3 +76,4 @@ def reverse_payment_allocation(
 
     invoice.save(update_fields=["amount_paid", "status", "updated_at"])
     return invoice
+

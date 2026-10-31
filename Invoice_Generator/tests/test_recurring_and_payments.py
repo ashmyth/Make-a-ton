@@ -12,9 +12,19 @@ from billing.services.allocation import (
     reverse_payment_allocation,
     PaymentAllocationError,
 )
-from billing.services.recurring import process_subscription_billing, run_billing_sweep
+from billing.services.recurring import (
+    compute_next_period,
+    process_subscription_billing,
+    run_billing_sweep,
+)
 
 User = get_user_model()
+
+
+class MockPlan:
+    def __init__(self, name, billing_interval):
+        self.name = name
+        self.billing_interval = billing_interval
 
 
 class MockSubscriptionLine:
@@ -27,7 +37,7 @@ class MockSubscriptionLine:
 
 
 class MockSubscription:
-    def __init__(self, id, user, status="active", expiry_date=None, lines=None):
+    def __init__(self, id, user, status="active", expiry_date=None, lines=None, billing_interval="month", plan=None):
         self.id = id
         self.pk = id
         self.customer = user
@@ -39,6 +49,8 @@ class MockSubscription:
         self.billing_anchor_date = date(2026, 1, 1)
         self.next_billing_date = date(2026, 1, 1)
         self.expiry_date = expiry_date
+        self.billing_interval = billing_interval
+        self.plan = plan
         self.lines = lines or [
             MockSubscriptionLine("Enterprise SaaS", 1, Decimal("2000.00"), tax_rate=Decimal("18.00"))
         ]
@@ -81,6 +93,29 @@ def test_subscription_recurring_billing_flow():
     # 3. Checkpoint advancement (BILL-02)
     assert sub.last_billed_period_end == p_end
     assert sub.next_billing_date == date(2026, 2, 1)
+
+
+@pytest.mark.django_db
+def test_billing_intervals_suggested_by_plan():
+    user = User.objects.create_user(username="interval_user", email="intervals@example.com")
+
+    # Weekly plan
+    sub_weekly = MockSubscription(id=601, user=user, plan=MockPlan("Weekly Pro", "weekly"))
+    p_start, p_end = compute_next_period(sub_weekly)
+    assert p_start == date(2026, 1, 1)
+    assert p_end == date(2026, 1, 7)  # 7 days
+
+    # Quarterly plan (every 3 months)
+    sub_quarterly = MockSubscription(id=602, user=user, plan=MockPlan("Quarterly Pro", "quarterly"))
+    p_start, p_end = compute_next_period(sub_quarterly)
+    assert p_start == date(2026, 1, 1)
+    assert p_end == date(2026, 3, 31)
+
+    # Yearly plan
+    sub_yearly = MockSubscription(id=603, user=user, plan=MockPlan("Annual Pro", "yearly"))
+    p_start, p_end = compute_next_period(sub_yearly)
+    assert p_start == date(2026, 1, 1)
+    assert p_end == date(2026, 12, 31)
 
 
 @pytest.mark.django_db

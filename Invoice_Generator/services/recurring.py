@@ -15,10 +15,27 @@ from billing.models import BillingFailure, Invoice, InvoiceStatus
 logger = logging.getLogger(__name__)
 
 
+def resolve_billing_interval(subscription) -> str:
+    """Extract billing interval from subscription, plan, or product (PRD §7.4, line 261)."""
+    plan = getattr(subscription, "plan", None)
+    product = getattr(subscription, "product", None)
+
+    interval = None
+    if plan and getattr(plan, "billing_interval", None):
+        interval = getattr(plan, "billing_interval", None)
+    elif product and getattr(product, "billing_interval", None):
+        interval = getattr(product, "billing_interval", None)
+    elif getattr(subscription, "billing_interval", None):
+        interval = getattr(subscription, "billing_interval", None)
+
+    return str(interval or "month").lower().strip()
+
+
 def compute_next_period(subscription, as_of: Optional[date] = None) -> tuple[date, date]:
-    """Compute period_start and period_end for the next billing cycle.
+    """Compute period_start and period_end based on the product/plan's billing interval.
     
-    Preserves anchor date while clamping to the end of shorter months.
+    Supports: daily, weekly, monthly, quarterly, semi-annually, yearly.
+    Preserves anchor date while clamping to the end of shorter months (PRD lines 383-385).
     """
     if as_of is None:
         as_of = timezone.localdate()
@@ -27,11 +44,20 @@ def compute_next_period(subscription, as_of: Optional[date] = None) -> tuple[dat
     next_billing_date = getattr(subscription, "next_billing_date", None) or anchor
 
     period_start = next_billing_date
-    # Standard monthly billing cycle
-    billing_interval = getattr(subscription, "billing_interval", "month")
-    if billing_interval == "year":
+    interval = resolve_billing_interval(subscription)
+
+    if interval in ("daily", "day"):
+        period_end = period_start
+    elif interval in ("weekly", "week"):
+        period_end = period_start + timedelta(days=6)
+    elif interval in ("quarterly", "quarter", "3months"):
+        period_end = (period_start + relativedelta(months=3)) - timedelta(days=1)
+    elif interval in ("semi-annual", "semi_annual", "biannual", "6months"):
+        period_end = (period_start + relativedelta(months=6)) - timedelta(days=1)
+    elif interval in ("yearly", "year", "annual", "annually"):
         period_end = (period_start + relativedelta(years=1)) - timedelta(days=1)
     else:
+        # Default to standard monthly
         period_end = (period_start + relativedelta(months=1)) - timedelta(days=1)
 
     return period_start, period_end
