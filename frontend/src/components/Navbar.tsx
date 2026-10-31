@@ -4,8 +4,8 @@ import type { User } from "../api";
 
 interface NavbarProps {
   currentUser: User | null;
-  activeView: "portal" | "finance";
-  onSwitchView: (view: "portal" | "finance") => void;
+  activeView: "portal" | "commercial" | "finance";
+  onSwitchView: (view: "portal" | "commercial" | "finance") => void;
   onLogout: () => void;
   onOpenLogin: () => void;
 }
@@ -17,6 +17,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
   onOpenLogin,
 }) => {
+  const getSubTitle = () => {
+    if (activeView === "commercial") return "Teammate 2 • Catalog & Subscriptions";
+    if (activeView === "finance") return "Teammates 3 & 4 • Finance & Billing";
+    return "Teammate 4 • Customer Portal";
+  };
+
   return (
     <header style={{
       background: "#000000",
@@ -42,13 +48,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           Brightloop
         </span>
         <span style={{ fontSize: "12px", color: "#afafaf", background: "#1a1a1a", padding: "2px 8px", borderRadius: "4px", border: "1px solid #333333" }}>
-          Teammate 4 • Payments & Portal
+          {getSubTitle()}
         </span>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         {/* View Switcher Pills */}
-        <div style={{ display: "flex", background: "#1a1a1a", borderRadius: "6px", padding: "3px", border: "1px solid #333333" }}>
+        <div style={{ display: "flex", background: "#1a1a1a", borderRadius: "6px", padding: "3px", border: "1px solid #333333", gap: "4px" }}>
           <button
             onClick={() => onSwitchView("portal")}
             style={{
@@ -64,6 +70,22 @@ export const Navbar: React.FC<NavbarProps> = ({
             }}
           >
             Customer Portal
+          </button>
+          <button
+            onClick={() => onSwitchView("commercial")}
+            style={{
+              background: activeView === "commercial" ? "#fff313" : "transparent",
+              color: activeView === "commercial" ? "#000000" : "#afafaf",
+              border: "none",
+              borderRadius: "4px",
+              padding: "6px 14px",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            Commercial Console
           </button>
           <button
             onClick={() => onSwitchView("finance")}

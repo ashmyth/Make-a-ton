@@ -1,11 +1,13 @@
 from datetime import timedelta
 from decimal import Decimal
-from django.db import transaction
+from django.db import models, transaction
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+
+from .services import process_subscription_expiries
 
 from .models import (
     QuotationTemplate,
@@ -342,13 +344,20 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         customer_id = self.request.query_params.get('customer_id')
         status_param = self.request.query_params.get('status')
         op_status = self.request.query_params.get('operational_status')
+        action_required_param = self.request.query_params.get('action_required')
 
         if customer_id:
-            queryset = queryset.filter(customer_id=customer_id)
+            queryset = queryset.filter(
+                models.Q(customer__id=customer_id) |
+                models.Q(customer__customer_code=customer_id) |
+                models.Q(customer_id_ref=customer_id)
+            )
         if status_param:
             queryset = queryset.filter(status=status_param)
         if op_status:
             queryset = queryset.filter(operational_status=op_status)
+        if action_required_param is not None:
+            queryset = queryset.filter(action_required=action_required_param.lower() in ['true', '1'])
 
         return queryset
 
@@ -446,13 +455,37 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         # 2. operational_status must be RUNNING (PAUSED subscriptions are excluded!)
         # 3. next_billing_date <= as_of_date
         # 4. start_date <= as_of_date
-        # 5. if expiry_date set, next_billing_date <= expiry_date
+        # 5. if expiry_date set, next_billing_date <= expiry_date and expiry_date >= as_of_date
+        # 6. action_required must be False (billing halts on expired action-required subscriptions per PRD §7.7)
         eligible_subs = Subscription.objects.filter(
             status=SubscriptionStatus.ACTIVE,
             is_paused=False,
+            action_required=False,
             start_date__lte=as_of_date,
             next_billing_date__lte=as_of_date
+        ).filter(
+            models.Q(expiry_date__isnull=True) | models.Q(expiry_date__gte=as_of_date)
         ).prefetch_related('lines__product', 'lines__variant', 'plan')
 
         export_serializer = SubscriptionBillingExportSerializer(eligible_subs, many=True)
         return Response(export_serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='sweep-expiries')
+    def sweep_expiries(self, request):
+        """
+        Executes an automated sweep of expired subscriptions:
+        - Subscriptions under plans with auto_close_at_expiry=True are automatically closed.
+        - Subscriptions under plans with auto_close_at_expiry=False enter the action-required queue
+          and halt further billing (PRD §7.7).
+        """
+        as_of_str = request.data.get('as_of') or request.query_params.get('as_of')
+        if as_of_str:
+            try:
+                as_of_date = timezone.datetime.strptime(as_of_str, '%Y-%m-%d').date()
+            except ValueError:
+                return Response({"error": "Invalid date format for 'as_of'. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            as_of_date = timezone.now().date()
+
+        result = process_subscription_expiries(as_of_date=as_of_date)
+        return Response(result, status=status.HTTP_200_OK)

@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { Navbar } from "./components/Navbar";
 import { CustomerPortal } from "./components/CustomerPortal";
 import { FinanceConsole } from "./components/FinanceConsole";
+import { CommercialConsole } from "./components/CommercialConsole";
 import { LoginModal } from "./components/LoginModal";
 import { api, type User } from "./api";
 
 export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [activeView, setActiveView] = useState<"portal" | "finance">("portal");
+  const [activeView, setActiveView] = useState<"portal" | "commercial" | "finance">("commercial");
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   useEffect(() => {
@@ -15,8 +16,10 @@ export function App() {
     api.auth.getMe()
       .then((user) => {
         setCurrentUser(user);
-        if (user.role === "FINANCE" || user.role === "ADMINISTRATOR") {
+        if (user.role === "FINANCE") {
           setActiveView("finance");
+        } else if (user.role === "OPERATIONS" || user.role === "ADMINISTRATOR") {
+          setActiveView("commercial");
         } else {
           setActiveView("portal");
         }
@@ -39,8 +42,10 @@ export function App() {
 
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
-    if (user.role === "FINANCE" || user.role === "ADMINISTRATOR") {
+    if (user.role === "FINANCE") {
       setActiveView("finance");
+    } else if (user.role === "OPERATIONS" || user.role === "ADMINISTRATOR") {
+      setActiveView("commercial");
     } else {
       setActiveView("portal");
     }
@@ -57,7 +62,9 @@ export function App() {
       />
 
       <main>
-        {activeView === "portal" ? <CustomerPortal /> : <FinanceConsole />}
+        {activeView === "portal" && <CustomerPortal />}
+        {activeView === "commercial" && <CommercialConsole />}
+        {activeView === "finance" && <FinanceConsole />}
       </main>
 
       <LoginModal

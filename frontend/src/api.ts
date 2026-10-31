@@ -224,6 +224,218 @@ export interface RecordPaymentPayload {
 }
 
 // ==========================================
+// Teammate 2: Commercial & Catalog Types
+// ==========================================
+
+export interface ProductVariant {
+  id: string;
+  product: string;
+  attribute_name: string;
+  value: string;
+  price_adjustment: string;
+  status: "active" | "archived";
+  total_unit_price: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  type: string | null;
+  sales_price: string;
+  cost_price?: string; // Strictly absent in customer view
+  notes: string | null;
+  status: "active" | "archived";
+  variants: ProductVariant[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  billing_interval: "daily" | "weekly" | "monthly" | "yearly";
+  min_quantity: number;
+  availability_start_date: string | null;
+  availability_end_date: string | null;
+  allow_pause: boolean;
+  allow_early_closure: boolean;
+  allow_renewal: boolean;
+  auto_close_at_expiry: boolean;
+  default_payment_terms: string;
+  primary_product: string | null;
+  primary_product_name?: string | null;
+  default_primary_unit_price: string | null;
+  status: "active" | "archived";
+  is_currently_available: boolean;
+}
+
+export interface PricingCalculationResult {
+  plan_id: string;
+  plan_name: string;
+  billing_interval: string;
+  default_payment_terms: string;
+  quote_date: string;
+  min_quantity_required: number;
+  min_quantity_met: boolean;
+  min_quantity_error: string | null;
+  lines: Array<{
+    line_number: number;
+    product_id: string;
+    product_name: string;
+    product_type: string | null;
+    variant_id: string | null;
+    variant_name: string | null;
+    is_primary: boolean;
+    base_price: string;
+    base_price_source: string;
+    variant_adjustment: string;
+    unit_price: string;
+    quantity: number;
+    line_subtotal: string;
+  }>;
+  recurring_subtotal: string;
+  pricing_policy: {
+    rule: string;
+    plan_price_applied: boolean;
+    separate_plan_charge: string;
+  };
+}
+
+export interface QuotationTemplateLine {
+  id: string;
+  product: string;
+  product_name: string;
+  variant: string | null;
+  variant_value: string | null;
+  default_quantity: number;
+  is_primary: boolean;
+  sort_order: number;
+}
+
+export interface QuotationTemplate {
+  id: string;
+  name: string;
+  plan: string;
+  plan_name: string;
+  validity_days: number;
+  notes: string | null;
+  status: "active" | "archived";
+  lines: QuotationTemplateLine[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface QuotationLine {
+  id: string;
+  product: string;
+  product_name: string;
+  variant: string | null;
+  variant_value: string | null;
+  description: string;
+  quantity: number;
+  unit_price: string;
+  line_total: string;
+  is_primary: boolean;
+  sort_order: number;
+}
+
+export interface Quotation {
+  id: string;
+  quotation_number: string;
+  customer_id: string;
+  template: string | null;
+  plan: string;
+  plan_name: string;
+  status: "draft" | "sent" | "reviewed" | "confirmed" | "expired" | "cancelled";
+  issue_date: string;
+  expiry_date: string;
+  is_expired: boolean;
+  total_amount: string;
+  payment_terms: string;
+  notes: string | null;
+  confirmed_by: string | null;
+  confirmed_at: string | null;
+  lines: QuotationLine[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionLine {
+  id: string;
+  product: string;
+  product_name: string;
+  variant: string | null;
+  variant_value: string | null;
+  description: string;
+  quantity: number;
+  unit_price: string;
+  line_total: string;
+  is_primary: boolean;
+  sort_order: number;
+}
+
+export interface SubscriptionDetail {
+  id: string;
+  subscription_number: string;
+  customer_id: string;
+  quotation?: string | null;
+  plan: string;
+  plan_name: string;
+  billing_interval: string;
+  status: "draft" | "quotation" | "confirmed" | "active" | "paused" | "closed";
+  operational_status: "running" | "paused";
+  start_date: string;
+  expiry_date: string | null;
+  billing_anchor_date: string | null;
+  next_billing_date: string | null;
+  last_billed_period_end: string | null;
+  payment_terms: string;
+  pause_date: string | null;
+  pause_reason: string | null;
+  resume_date: string | null;
+  closure_date: string | null;
+  closure_reason: string | null;
+  action_required: boolean;
+  action_required_reason: string | null;
+  predecessor: string | null;
+  predecessor_number: string | null;
+  successor: string | null;
+  successor_number: string | null;
+  total_recurring_amount: string;
+  lines: SubscriptionLine[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BillingExportLine {
+  subscription_line_id: string;
+  product_id: string;
+  variant_id: string | null;
+  description: string;
+  quantity: number;
+  unit_price: string;
+  is_primary: boolean;
+}
+
+export interface SubscriptionBillingExport {
+  subscription_id: string;
+  subscription_number: string;
+  customer_id: string;
+  plan_id: string;
+  status: string;
+  operational_status: string;
+  billing_anchor_date: string;
+  next_billing_date: string;
+  billing_interval: string;
+  start_date: string;
+  expiry_date: string | null;
+  payment_terms: string;
+  lines: BillingExportLine[];
+}
+
+// ==========================================
 // API Client
 // ==========================================
 
@@ -285,6 +497,143 @@ export const api = {
       apiRequest<Payment>(`/payments/${paymentId}/reverse/`, {
         method: "POST",
         body: JSON.stringify({ reason }),
+      }),
+  },
+
+  // Commercial Console (Teammate 2: Catalog, Quotations & Subscriptions)
+  commercial: {
+    // Products & Variants
+    getProducts: (params: Query = {}) =>
+      apiRequest<Product[]>(withQuery("/catalog/products/", params)),
+    getProduct: (id: string, params: Query = {}) =>
+      apiRequest<Product>(withQuery(`/catalog/products/${id}/`, params)),
+    createProduct: (data: Partial<Product>) =>
+      apiRequest<Product>("/catalog/products/", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    updateProduct: (id: string, data: Partial<Product>) =>
+      apiRequest<Product>(`/catalog/products/${id}/`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    archiveProduct: (id: string) =>
+      apiRequest<Product>(`/catalog/products/${id}/archive/`, { method: "POST" }),
+    createVariant: (data: { product: string; attribute_name: string; value: string; price_adjustment: string }) =>
+      apiRequest<ProductVariant>("/catalog/variants/", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    archiveVariant: (id: string) =>
+      apiRequest<ProductVariant>(`/catalog/variants/${id}/archive/`, { method: "POST" }),
+
+    // Subscription Plans
+    getPlans: (params: Query = {}) =>
+      apiRequest<SubscriptionPlan[]>(withQuery("/catalog/plans/", params)),
+    createPlan: (data: Partial<SubscriptionPlan>) =>
+      apiRequest<SubscriptionPlan>("/catalog/plans/", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    archivePlan: (id: string) =>
+      apiRequest<SubscriptionPlan>(`/catalog/plans/${id}/archive/`, { method: "POST" }),
+    calculatePricing: (planId: string, payload: { lines: Array<{ product_id: string; variant_id?: string | null; quantity: number; is_primary?: boolean }>; quote_date?: string; validate_minimums?: boolean }) =>
+      apiRequest<PricingCalculationResult>(`/catalog/plans/${planId}/calculate_pricing/`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+
+    // Quotation Templates
+    getTemplates: (params: Query = {}) =>
+      apiRequest<QuotationTemplate[]>(withQuery("/subscriptions/templates/", params)),
+    createTemplate: (data: any) =>
+      apiRequest<QuotationTemplate>("/subscriptions/templates/", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    duplicateTemplate: (id: string, name?: string) =>
+      apiRequest<QuotationTemplate>(`/subscriptions/templates/${id}/duplicate/`, {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      }),
+    archiveTemplate: (id: string) =>
+      apiRequest<QuotationTemplate>(`/subscriptions/templates/${id}/archive/`, { method: "POST" }),
+    createQuotationFromTemplate: (templateId: string, payload: { customer_id: string; issue_date?: string; notes?: string }) =>
+      apiRequest<Quotation>(`/subscriptions/templates/${templateId}/create-quotation/`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+
+    // Quotations Workflow
+    getQuotations: (params: Query = {}) =>
+      apiRequest<Quotation[]>(withQuery("/subscriptions/quotations/", params)),
+    getQuotation: (id: string) =>
+      apiRequest<Quotation>(`/subscriptions/quotations/${id}/`),
+    createQuotation: (data: any) =>
+      apiRequest<Quotation>("/subscriptions/quotations/", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    sendQuotation: (id: string) =>
+      apiRequest<Quotation>(`/subscriptions/quotations/${id}/send/`, { method: "POST" }),
+    reviewQuotation: (id: string) =>
+      apiRequest<Quotation>(`/subscriptions/quotations/${id}/review/`, { method: "POST" }),
+    confirmQuotation: (id: string, confirmed_by?: string) =>
+      apiRequest<Quotation>(`/subscriptions/quotations/${id}/confirm/`, {
+        method: "POST",
+        body: JSON.stringify({ confirmed_by }),
+      }),
+    extendQuotation: (id: string, additional_days: number) =>
+      apiRequest<Quotation>(`/subscriptions/quotations/${id}/extend/`, {
+        method: "POST",
+        body: JSON.stringify({ additional_days }),
+      }),
+    cancelQuotation: (id: string, reason?: string) =>
+      apiRequest<Quotation>(`/subscriptions/quotations/${id}/cancel/`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      }),
+    convertToSubscription: (id: string, payload?: { start_date?: string; expiry_date?: string }) =>
+      apiRequest<SubscriptionDetail>(`/subscriptions/quotations/${id}/convert-to-subscription/`, {
+        method: "POST",
+        body: JSON.stringify(payload ?? {}),
+      }),
+
+    // Subscriptions Management
+    getSubscriptions: (params: Query = {}) =>
+      apiRequest<SubscriptionDetail[]>(withQuery("/subscriptions/subscriptions/", params)),
+    getSubscription: (id: string, params: Query = {}) =>
+      apiRequest<SubscriptionDetail>(withQuery(`/subscriptions/subscriptions/${id}/`, params)),
+    pauseSubscription: (id: string, reason?: string) =>
+      apiRequest<SubscriptionDetail>(`/subscriptions/subscriptions/${id}/pause/`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      }),
+    resumeSubscription: (id: string) =>
+      apiRequest<SubscriptionDetail>(`/subscriptions/subscriptions/${id}/resume/`, { method: "POST" }),
+    renewSubscription: (id: string, payload?: { new_start_date?: string; new_expiry_date?: string }) =>
+      apiRequest<SubscriptionDetail>(`/subscriptions/subscriptions/${id}/renew/`, {
+        method: "POST",
+        body: JSON.stringify(payload ?? {}),
+      }),
+    closeSubscription: (id: string, payload: { reason?: string; early?: boolean }) =>
+      apiRequest<SubscriptionDetail>(`/subscriptions/subscriptions/${id}/close/`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    getDueForBilling: (asOf?: string) =>
+      apiRequest<SubscriptionBillingExport[]>(withQuery("/subscriptions/subscriptions/due-for-billing/", { as_of: asOf })),
+    sweepExpiries: (asOf?: string) =>
+      apiRequest<{
+        as_of_date: string;
+        total_evaluated: number;
+        auto_closed_count: number;
+        auto_closed_subscriptions: string[];
+        action_required_count: number;
+        action_required_subscriptions: string[];
+      }>("/subscriptions/subscriptions/sweep-expiries/", {
+        method: "POST",
+        body: JSON.stringify({ as_of: asOf }),
       }),
   },
 };

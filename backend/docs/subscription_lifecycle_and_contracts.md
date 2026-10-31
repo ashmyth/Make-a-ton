@@ -15,7 +15,7 @@ Teammate 2 owns the commercial foundation of Brightloop:
 * **Subscription Plans:** Billing intervals (daily, weekly, monthly, yearly), minimum quantities, availability windows, and policy flags (`allow_pause`, `allow_early_closure`, `allow_renewal`, `auto_close_at_expiry`).
 * **Quotation Templates:** Pre-configured plan and line defaults with deep cloning (`.duplicate()`).
 * **Quotation Workflow:** Customer quotes, dynamic expiry calculation ($\text{issue\_date} + \text{validity\_days}$), commercial pricing snapshots, expiry extension, and confirmation guards.
-* **Subscription Management:** Converting confirmed quotes into live subscriptions, operational pause/resume, renewals via linked successors, closures, and the recurring billing export feed.
+* **Subscription Management:** Converting confirmed quotes into live subscriptions, operational pause/resume, renewals via linked successors, closures, automated expiry sweeps, the "Expired—action required" queue, and the recurring billing export feed.
 
 ---
 
@@ -62,7 +62,10 @@ Teammate 2 owns the commercial foundation of Brightloop:
 4. **Active (Running) $\rightarrow$ Active (Paused):** `POST /subscriptions/{id}/pause/`. **Strict Policy Check:** Only permitted if `plan.allow_pause == True`.
 5. **Active (Paused) $\rightarrow$ Active (Running):** `POST /subscriptions/{id}/resume/`.
 6. **Renewal:** `POST /subscriptions/{id}/renew/`. **Strict Policy Check:** Only permitted if `plan.allow_renewal == True`. Creates a linked successor subscription (`predecessor_id` $\leftrightarrow$ `successor_id`) and closes predecessor.
-7. **Closure:** `POST /subscriptions/{id}/close/`. Permitted at term expiry or early cancellation if `plan.allow_early_closure == True`.
+7. **Closure & Expiry:** `POST /subscriptions/{id}/close/`. Permitted at term expiry or early cancellation if `plan.allow_early_closure == True` (or explicit `early: true` override).
+8. **Automated Expiry Sweep (PRD §7.7):** Periodic background sweep (`POST /api/subscriptions/sweep-expiries/` or `python manage.py process_subscription_expiries`):
+   - When `today >= expiry_date` and `plan.auto_close_at_expiry == True`: subscription is automatically transitioned to `status="closed"`.
+   - When `today >= expiry_date` and `plan.auto_close_at_expiry == False`: subscription is flagged `action_required = True` with `action_required_reason = "expired_without_auto_close"`. Recurring billing immediately halts.
 
 ---
 
@@ -78,7 +81,9 @@ Teammate 3 queries due subscriptions to generate invoices. Teammate 2 exposes:
   * `operational_status == "running"`
   * `start_date <= as_of_date`
   * `next_billing_date <= as_of_date`
-  * **Strict exclusion:** Paused and Closed subscriptions are **never** returned for billing.
+  * `expiry_date >= as_of_date` (halt billing once term is reached)
+  * `action_required == False` (halt billing for subscriptions awaiting manual renewal/closure action)
+  * **Strict exclusion:** Paused, Closed, Expired, and Action-Required subscriptions are **never** returned for billing.
 
 #### Response Payload Schema (`SubscriptionBillingExport`):
 ```json
@@ -124,7 +129,7 @@ Teammate 4 consumes customer-facing subscription data:
 
 ### Contract 3: Teammate 1 (Identity & Customers)
 
-* Teammate 2 consumes `customer_id` from Teammate 1.
+* Teammate 2 accepts either customer UUID or string business code (e.g. `CUST-ACME-01`, email, or name) and automatically resolves it to the authoritative `Customer` ForeignKey while preserving `customer_id_ref`.
 * Audit and confirmation actions record `confirmed_by` staff identifiers.
 
 ---
@@ -138,3 +143,17 @@ Subscription line unit prices are the single source of recurring charges:
 4. Plan price is not added again as a separate fee.
 5. All prices freeze into permanent snapshots when quotations and subscriptions are created.
 
+
+
+---
+
+## 5. Teammate 2 Frontend: Commercial Console (`CommercialConsole.tsx`)
+
+A dedicated high-density industrial control panel following Brightloop Design System (`DESIGN.md`):
+- **High-Voltage Caution Yellow Accent:** `#fff313` with midnight steel `#000000`, carbon `#333333`, gunmetal `#4b4b4b`.
+- **Five Interactive Tabs:**
+  1. **Products & Variants:** Master catalog table, status filter (active/archived), Add Product, Add Variant modal, and staff vs customer mode toggling (instant cost-price stripping).
+  2. **Subscription Plans:** Plan cards with billing intervals, min quantity badges, policy rule indicators (pause, early close, renewal, auto-close), availability ranges, and Add Plan modal.
+  3. **Quotation Templates:** Template list, line item inspections, Duplicate Template action, Create Quote from Template modal.
+  4. **Quotations Workflow:** Live status pipeline (Draft, Quotation, Confirmed, Cancelled), dynamic expiry countdowns, Extend Expiry modal, Live PRD §7.4 Pricing Simulator, and Convert to Subscription flow.
+  5. **Subscriptions Lifecycle:** Full lifecycle controller (Running, Paused, Action-Required, Closed), Term and Early Closure modals with guards, Pause/Resume toggles, Successor Renewal links, and Teammate 3 Recurring Billing Feed inspection preview.

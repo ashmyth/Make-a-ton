@@ -8,6 +8,47 @@ from django.utils import timezone
 
 from apps.catalog.models import Product, ProductVariant, SubscriptionPlan, StatusChoices
 
+def resolve_customer(customer_identifier):
+    """
+    Robustly resolves a Customer record from Teammate 1 foundation.
+    Accepts Customer instance, UUID, customer_code (e.g. CUST-0001), email, or display name.
+    """
+    if not customer_identifier:
+        return None
+    import uuid
+    from django.apps import apps
+    try:
+        Customer = apps.get_model('customers', 'Customer', require_ready=False)
+    except LookupError:
+        return None
+
+    if isinstance(customer_identifier, Customer):
+        return customer_identifier
+
+    is_uuid = False
+    if isinstance(customer_identifier, uuid.UUID):
+        is_uuid = True
+    else:
+        try:
+            uuid.UUID(str(customer_identifier))
+            is_uuid = True
+        except (ValueError, TypeError):
+            is_uuid = False
+
+    if is_uuid:
+        c = Customer.objects.filter(id=customer_identifier).first()
+        if c:
+            return c
+
+    code_str = str(customer_identifier).strip()
+    c = Customer.objects.filter(customer_code__iexact=code_str).first()
+    if c:
+        return c
+
+    c = Customer.objects.filter(email__iexact=code_str).first() or Customer.objects.filter(display_name__iexact=code_str).first()
+    return c
+
+
 
 class QuotationStatus(models.TextChoices):
     DRAFT = 'draft', 'Draft'
@@ -397,6 +438,16 @@ class Subscription(models.Model):
     resume_date = models.DateField(null=True, blank=True)
     closure_date = models.DateField(null=True, blank=True)
     closure_reason = models.TextField(blank=True, null=True)
+    action_required = models.BooleanField(
+        default=False,
+        help_text="Flagged when subscription expires without auto-close, requiring staff intervention (PRD §7.7)"
+    )
+    action_required_reason = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Reason for requiring operational review"
+    )
 
     predecessor = models.OneToOneField(
         'self',
@@ -418,22 +469,38 @@ class Subscription(models.Model):
         if 'customer_id' in kwargs:
             val = kwargs.pop('customer_id')
             if val is not None:
-                is_uuid = False
-                if isinstance(val, uuid.UUID):
-                    is_uuid = True
+                cust_obj = resolve_customer(val)
+                if cust_obj:
+                    kwargs['customer'] = cust_obj
+                    kwargs['customer_id_ref'] = cust_obj.customer_code
                 else:
-                    try:
-                        uuid.UUID(str(val))
+                    is_uuid = False
+                    if isinstance(val, uuid.UUID):
                         is_uuid = True
-                    except (ValueError, TypeError):
-                        is_uuid = False
+                    else:
+                        try:
+                            uuid.UUID(str(val))
+                            is_uuid = True
+                        except (ValueError, TypeError):
+                            is_uuid = False
 
-                if is_uuid:
-                    kwargs['customer_id'] = val
-                else:
-                    kwargs['customer_id_ref'] = str(val)
-                    kwargs['customer'] = None
+                    if is_uuid:
+                        kwargs['customer_id'] = val
+                    else:
+                        kwargs['customer_id_ref'] = str(val)
+                        kwargs['customer'] = None
+        elif 'customer' in kwargs and kwargs['customer'] is not None:
+            c = kwargs['customer']
+            if hasattr(c, 'customer_code') and not kwargs.get('customer_id_ref'):
+                kwargs['customer_id_ref'] = c.customer_code
         super().__init__(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        if not self.customer and self.customer_id_ref:
+            resolved = resolve_customer(self.customer_id_ref)
+            if resolved:
+                self.customer = resolved
+        super().save(*args, **kwargs)
 
     def __str__(self):
         cust = self.customer.display_name if self.customer else self.customer_id_ref
@@ -504,6 +571,8 @@ class Subscription(models.Model):
         self.status = SubscriptionStatus.CLOSED
         self.closure_date = today
         self.closure_reason = reason or ("Early cancellation" if is_early else "Term expired")
+        self.action_required = False
+        self.action_required_reason = None
         self.version += 1
         self.save()
 

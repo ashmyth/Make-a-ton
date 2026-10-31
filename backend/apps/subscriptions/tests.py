@@ -656,3 +656,236 @@ class SubscriptionManagementTests(APITestCase):
         self.assertEqual(len(item['lines']), 1)
         self.assertEqual(Decimal(item['lines'][0]['unit_price']), Decimal("500.00"))
         self.assertEqual(item['lines'][0]['quantity'], 2)
+
+    def test_close_subscription_at_term_expiry_api(self):
+        """
+        Part E & Deliverable Requirement:
+        Tests for subscription closure at term expiry via POST /api/subscriptions/subscriptions/{id}/close/
+        """
+        today = date.today()
+        sub = Subscription.objects.create(
+            subscription_number="SUB-CLOSE-TERM-001",
+            customer_id="CUST-EXP",
+            plan=self.non_pausable_plan,  # allow_early_closure=False
+            status=SubscriptionStatus.ACTIVE,
+            start_date=today - timedelta(days=365),
+            expiry_date=today,  # Expired today -> Not early!
+            billing_anchor_date=today - timedelta(days=365),
+            next_billing_date=today,
+            payment_terms="Immediate"
+        )
+
+        close_url = reverse('subscription-close', kwargs={'pk': sub.id})
+        res = self.client.post(close_url, {"reason": "Term completed successfully"})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['status'], SubscriptionStatus.CLOSED)
+
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, SubscriptionStatus.CLOSED)
+        self.assertEqual(sub.closure_date, today)
+        self.assertEqual(sub.closure_reason, "Term completed successfully")
+
+    def test_early_closure_rejected_when_plan_disallows(self):
+        """
+        Part E & Deliverable Requirement:
+        Tests that early closure is rejected with HTTP 400 if plan.allow_early_closure is False.
+        """
+        today = date.today()
+        sub = Subscription.objects.create(
+            subscription_number="SUB-EARLY-REJECT-002",
+            customer_id="CUST-STRICT",
+            plan=self.non_pausable_plan,  # allow_early_closure=False
+            status=SubscriptionStatus.ACTIVE,
+            start_date=today,
+            expiry_date=today + timedelta(days=180),  # In future!
+            billing_anchor_date=today,
+            next_billing_date=today + timedelta(days=30),
+            payment_terms="Immediate"
+        )
+
+        close_url = reverse('subscription-close', kwargs={'pk': sub.id})
+        res = self.client.post(close_url, {"reason": "Customer cancellation attempt"})
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("does not permit early closure", res.data['error'])
+
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, SubscriptionStatus.ACTIVE)
+
+    def test_early_closure_allowed_when_plan_permits(self):
+        """
+        Part E & Deliverable Requirement:
+        Tests that early closure succeeds when plan.allow_early_closure is True.
+        """
+        today = date.today()
+        sub = Subscription.objects.create(
+            subscription_number="SUB-EARLY-OK-003",
+            customer_id="CUST-FLEX",
+            plan=self.pausable_plan,  # allow_early_closure=True
+            status=SubscriptionStatus.ACTIVE,
+            start_date=today,
+            expiry_date=today + timedelta(days=180),  # In future!
+            billing_anchor_date=today,
+            next_billing_date=today + timedelta(days=30),
+            payment_terms="Immediate"
+        )
+
+        close_url = reverse('subscription-close', kwargs={'pk': sub.id})
+        res = self.client.post(close_url, {"reason": "Customer downsizing"})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['status'], SubscriptionStatus.CLOSED)
+
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, SubscriptionStatus.CLOSED)
+        self.assertEqual(sub.closure_reason, "Customer downsizing")
+
+    def test_early_closure_forced_with_early_flag(self):
+        """
+        Part E & Deliverable Requirement:
+        Staff explicitly forces early closure with early=True flag.
+        """
+        today = date.today()
+        sub = Subscription.objects.create(
+            subscription_number="SUB-EARLY-FLAG-004",
+            customer_id="CUST-FORCE",
+            plan=self.non_pausable_plan,  # allow_early_closure=False
+            status=SubscriptionStatus.ACTIVE,
+            start_date=today,
+            expiry_date=today + timedelta(days=90),
+            billing_anchor_date=today,
+            next_billing_date=today + timedelta(days=30),
+            payment_terms="Immediate"
+        )
+
+        close_url = reverse('subscription-close', kwargs={'pk': sub.id})
+        res = self.client.post(close_url, {"reason": "Executive special waiver", "early": True})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, SubscriptionStatus.CLOSED)
+
+    def test_cannot_close_already_closed_subscription(self):
+        """Tests that closing an already closed subscription returns HTTP 400."""
+        today = date.today()
+        sub = Subscription.objects.create(
+            subscription_number="SUB-ALREADY-CLOSED-005",
+            customer_id="CUST-CLOSED",
+            plan=self.pausable_plan,
+            status=SubscriptionStatus.CLOSED,
+            closure_date=today,
+            closure_reason="Previous closure"
+        )
+        close_url = reverse('subscription-close', kwargs={'pk': sub.id})
+        res = self.client.post(close_url, {"reason": "Duplicate close call"})
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("already closed", res.data['error'].lower())
+
+    def test_auto_close_at_expiry_sweep_service_and_api(self):
+        """
+        Part B Requirement (100%):
+        Automated sweep for auto_close_at_expiry:
+        - Subscriptions under auto_close_at_expiry=True plans are automatically closed.
+        - Subscriptions under auto_close_at_expiry=False plans enter action_required queue.
+        """
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+
+        auto_close_plan = SubscriptionPlan.objects.create(
+            name="Auto Close Expired Plan",
+            billing_interval=BillingInterval.MONTHLY,
+            auto_close_at_expiry=True
+        )
+        manual_review_plan = SubscriptionPlan.objects.create(
+            name="Manual Review Expired Plan",
+            billing_interval=BillingInterval.MONTHLY,
+            auto_close_at_expiry=False
+        )
+
+        sub_auto = Subscription.objects.create(
+            subscription_number="SUB-SWEEP-AUTO-001",
+            customer_id="CUST-SWEEP-1",
+            plan=auto_close_plan,
+            status=SubscriptionStatus.ACTIVE,
+            start_date=yesterday - timedelta(days=30),
+            expiry_date=yesterday,
+            billing_anchor_date=yesterday - timedelta(days=30),
+            next_billing_date=today
+        )
+
+        sub_manual = Subscription.objects.create(
+            subscription_number="SUB-SWEEP-MANUAL-002",
+            customer_id="CUST-SWEEP-2",
+            plan=manual_review_plan,
+            status=SubscriptionStatus.ACTIVE,
+            start_date=yesterday - timedelta(days=30),
+            expiry_date=yesterday,
+            billing_anchor_date=yesterday - timedelta(days=30),
+            next_billing_date=today
+        )
+
+        # Trigger sweep via API action: POST /api/subscriptions/subscriptions/sweep-expiries/
+        sweep_url = reverse('subscription-sweep-expiries')
+        res = self.client.post(sweep_url, {"as_of": str(today)})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['auto_closed_count'], 1)
+        self.assertEqual(res.data['action_required_count'], 1)
+        self.assertIn(sub_auto.subscription_number, res.data['auto_closed_subscriptions'])
+        self.assertIn(sub_manual.subscription_number, res.data['action_required_subscriptions'])
+
+        # Verify database state
+        sub_auto.refresh_from_db()
+        self.assertEqual(sub_auto.status, SubscriptionStatus.CLOSED)
+        self.assertIn("auto-closed at expiry", sub_auto.closure_reason)
+
+        sub_manual.refresh_from_db()
+        self.assertEqual(sub_manual.status, SubscriptionStatus.ACTIVE)
+        self.assertTrue(sub_manual.action_required)
+        self.assertIn("renewal or closure required", sub_manual.action_required_reason)
+
+        # PRD §7.7 Verification: Billing MUST STOP for action-required subscription!
+        billing_url = reverse('subscription-due-for-billing')
+        billing_res = self.client.get(f"{billing_url}?as_of={today}")
+        self.assertEqual(billing_res.status_code, status.HTTP_200_OK)
+        due_ids = [s['subscription_id'] for s in billing_res.data]
+        self.assertNotIn(str(sub_auto.id), due_ids)
+        self.assertNotIn(str(sub_manual.id), due_ids)
+
+    def test_customer_code_resolved_to_foreign_key_on_conversion(self):
+        """
+        Integration Responsibility (100%):
+        Ensures customer code (e.g. 'CUST-ALPHA-99') resolves to Customer ForeignKey
+        so Teammate 4's Customer Portal can seamlessly filter subscriptions by customer.
+        """
+        from apps.customers.models import Customer
+        customer = Customer.objects.create(
+            customer_code="CUST-ALPHA-99",
+            display_name="Alpha Tech Industries",
+            email="finance@alphatech.com"
+        )
+
+        # Create quote with customer_code instead of UUID
+        quote = Quotation.objects.create(
+            quotation_number="QT-INTEG-001",
+            customer_id="CUST-ALPHA-99",
+            plan=self.pausable_plan,
+            status=QuotationStatus.CONFIRMED,
+            issue_date=date.today(),
+            expiry_date=date.today() + timedelta(days=30)
+        )
+        QuotationLine.objects.create(
+            quotation=quote,
+            product=self.product,
+            quantity=1,
+            unit_price=Decimal("500.00"),
+            line_total=Decimal("500.00"),
+            is_primary=True
+        )
+
+        # Convert to subscription
+        convert_url = reverse('quotation-convert-to-subscription', kwargs={'pk': quote.id})
+        res = self.client.post(convert_url, {"start_date": str(date.today())})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+        sub = Subscription.objects.get(id=res.data['id'])
+        # Foreign key MUST be linked to the Customer object!
+        self.assertEqual(sub.customer, customer)
+        self.assertEqual(str(sub.customer_id), str(customer.id))
+        self.assertEqual(sub.customer_id_ref, "CUST-ALPHA-99")

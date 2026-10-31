@@ -345,6 +345,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             'resume_date',
             'closure_date',
             'closure_reason',
+            'action_required',
+            'action_required_reason',
             'predecessor',
             'predecessor_number',
             'successor',
