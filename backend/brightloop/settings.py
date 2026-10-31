@@ -50,6 +50,11 @@ INSTALLED_APPS = [
 
 AUTH_USER_MODEL = 'accounts.User'
 
+AUTHENTICATION_BACKENDS = [
+    'apps.accounts.backends.BrightloopBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -92,6 +97,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
         'OPTIONS': {'min_length': 9},
+    },
+    {
+        'NAME': 'apps.accounts.validators.BrightloopPasswordValidator',
     },
 ]
 
@@ -138,6 +146,12 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 
 # Reverse proxy support for client IP tracking
 TRUSTED_PROXY_COUNT = int(os.environ.get('TRUSTED_PROXY_COUNT', '1'))
+
+# Identity & Security Policies (PRD §7.1)
+LOGIN_MAX_FAILED_ATTEMPTS = 5
+LOGIN_LOCKOUT_MINUTES = 15
+PASSWORD_RESET_TOKEN_MINUTES = 60
+FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173')
 
 # Billing & Email settings
 BILLING_PAYMENT_MODEL = 'payments.Payment'

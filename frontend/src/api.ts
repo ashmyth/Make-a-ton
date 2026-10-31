@@ -449,6 +449,16 @@ export const api = {
         method: "POST",
         body: JSON.stringify(credentials),
       }),
+    register: (data: { email: string; password: string; full_name?: string; company_name?: string; phone?: string }) =>
+      apiRequest<User>("/auth/register/", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    forgotPassword: (email: string) =>
+      apiRequest<{ detail: string }>("/auth/password-reset/", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      }),
     logout: () => apiRequest<{ detail: string }>("/auth/logout/", { method: "POST" }),
   },
 

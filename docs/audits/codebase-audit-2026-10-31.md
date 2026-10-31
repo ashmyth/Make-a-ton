@@ -107,3 +107,4 @@ This adversarial audit evaluates Brightloop against its Product Requirement Docu
 3. **Audit Trail Integration:** Integrate `apps.audit` into `backend/apps/audit/`, run migrations, and instrument financial service hooks.
 4. **Clean Frontend:** Strip all hardcoded passwords and demo shortcuts from `LoginModal.tsx`.
 5. **End-to-End Verification:** Execute all unit/integration tests and verify clean TypeScript build.
+

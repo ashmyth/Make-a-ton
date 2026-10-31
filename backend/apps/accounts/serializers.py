@@ -62,6 +62,23 @@ class RegisterSerializer(serializers.Serializer):
         return User.objects.create_user(role=UserRole.CUSTOMER, **validated_data)
 
 
+class LoginSerializer(serializers.Serializer):
+    email = NormalizedEmailField(max_length=254)
+    password = serializers.CharField(write_only=True, trim_whitespace=False, max_length=128)
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = NormalizedEmailField(max_length=254)
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=256)
+    new_password = serializers.CharField(write_only=True, trim_whitespace=False, max_length=128)
+
+    def validate_new_password(self, value: str) -> str:
+        return validate_new_password(value)
+
+
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True, trim_whitespace=False)
     new_password = serializers.CharField(write_only=True, trim_whitespace=False, max_length=128)
@@ -80,3 +97,11 @@ class ChangePasswordSerializer(serializers.Serializer):
         user.set_password(self.validated_data["new_password"])
         user.save(update_fields=["password", "updated_at"])
         return user
+
+
+class MessageSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+
+
+class CsrfSerializer(serializers.Serializer):
+    csrfToken = serializers.CharField()

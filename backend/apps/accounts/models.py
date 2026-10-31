@@ -1,13 +1,9 @@
 import uuid
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
-
-
-class UserRole(models.TextChoices):
-    ADMINISTRATOR = "ADMINISTRATOR", "Administrator"
-    OPERATIONS = "OPERATIONS", "Operations"
-    FINANCE = "FINANCE", "Finance"
-    CUSTOMER = "CUSTOMER", "Customer"
+from django.utils import timezone
+from apps.access_control.roles import UserRole, STAFF_ROLES
 
 
 class UserManager(BaseUserManager):
@@ -38,6 +34,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     role = models.CharField(max_length=20, choices=UserRole.choices, default=UserRole.CUSTOMER)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    failed_login_attempts = models.PositiveIntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -55,6 +53,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         return name or self.email
 
     @property
+    def is_staff_user(self) -> bool:
+        return self.role in STAFF_ROLES
+
+    @property
+    def is_locked(self) -> bool:
+        return self.locked_until is not None and self.locked_until > timezone.now()
+
+    @property
     def customer(self):
         """Returns the linked Customer instance if this user is a customer portal user."""
         return getattr(self, "customer_profile", None)
@@ -68,3 +74,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return f"{self.email} ({self.role})"
 
+
+class PasswordResetToken(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="password_reset_tokens")
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["user", "is_used"], name="pwreset_user_used_idx")]

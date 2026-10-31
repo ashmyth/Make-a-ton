@@ -1,25 +1,24 @@
 import { useState, useEffect } from "react";
 import { Navbar } from "./components/Navbar";
 import { CustomerPortal } from "./components/CustomerPortal";
-import { FinanceConsole } from "./components/FinanceConsole";
+import { StaffConsoleShell } from "./components/StaffConsoleShell";
 import { CommercialConsole } from "./components/CommercialConsole";
 import { LoginModal } from "./components/LoginModal";
 import { api, type User } from "./api";
 
 export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [activeView, setActiveView] = useState<"portal" | "commercial" | "finance">("commercial");
+  const [activeView, setActiveView] = useState<"portal" | "console" | "commercial">("portal");
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [, setLoading] = useState(true);
 
   useEffect(() => {
     // Check if session is already active
     api.auth.getMe()
       .then((user) => {
         setCurrentUser(user);
-        if (user.role === "FINANCE") {
-          setActiveView("finance");
-        } else if (user.role === "OPERATIONS" || user.role === "ADMINISTRATOR") {
-          setActiveView("commercial");
+        if (["FINANCE", "ADMINISTRATOR", "OPERATIONS"].includes(user.role)) {
+          setActiveView("console");
         } else {
           setActiveView("portal");
         }
@@ -27,6 +26,9 @@ export function App() {
       .catch(() => {
         // Not logged in yet
         setIsLoginModalOpen(true);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   }, []);
 
@@ -42,17 +44,15 @@ export function App() {
 
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
-    if (user.role === "FINANCE") {
-      setActiveView("finance");
-    } else if (user.role === "OPERATIONS" || user.role === "ADMINISTRATOR") {
-      setActiveView("commercial");
+    if (["FINANCE", "ADMINISTRATOR", "OPERATIONS"].includes(user.role)) {
+      setActiveView("console");
     } else {
       setActiveView("portal");
     }
   };
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#000000", color: "#eeeeee" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--color-parchment)", color: "var(--color-off-black)" }}>
       <Navbar
         currentUser={currentUser}
         activeView={activeView}
@@ -62,9 +62,19 @@ export function App() {
       />
 
       <main>
-        {activeView === "portal" && <CustomerPortal />}
-        {activeView === "commercial" && <CommercialConsole />}
-        {activeView === "finance" && <FinanceConsole />}
+        {activeView === "portal" ? (
+          <div style={{ maxWidth: "1080px", margin: "0 auto", padding: "32px 24px" }}>
+            <CustomerPortal />
+          </div>
+        ) : activeView === "commercial" ? (
+          <CommercialConsole />
+        ) : currentUser ? (
+          <StaffConsoleShell currentUser={currentUser} />
+        ) : (
+          <div style={{ padding: "40px", textAlign: "center", color: "var(--color-smoke)" }}>
+            Please sign in to access the Staff Console.
+          </div>
+        )}
       </main>
 
       <LoginModal

@@ -192,3 +192,4 @@ class CustomerViewSet(
         except IntegrityError as exc:
             raise ValidationError({"user_id": "User is already linked to a customer."}) from exc
         return Response(self.get_serializer(customer).data)
+
