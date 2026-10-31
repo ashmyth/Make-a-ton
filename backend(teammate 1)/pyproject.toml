@@ -1,0 +1,24 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106", "B"]
+
+[tool.importlinter]
+root_packages = ["apps", "brightloop"]
+
+[[tool.importlinter.contracts]]
+name = "Brightloop identity layering"
+type = "layers"
+layers = [
+    "apps.staff | apps.customers",
+    "apps.accounts",
+    "apps.audit",
+    "apps.access_control",
+]
