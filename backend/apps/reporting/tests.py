@@ -115,3 +115,4 @@ class ReportingMetricCalculationTests(TestCase):
         self.assertEqual(metrics["cash_collected"], Decimal("0.00"))
         # Outstanding balance is now 5,000 + 3,000 = 8,000
         self.assertEqual(metrics["outstanding_balance"], Decimal("8000.00"))
+

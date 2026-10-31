@@ -62,3 +62,4 @@ class Payment(models.Model):
     def __str__(self):
         state = "REVERSED" if self.is_reversed else self.status
         return f"{self.id} - {self.currency} {self.amount} for {self.invoice.invoice_number} ({state})"
+

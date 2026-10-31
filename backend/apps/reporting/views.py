@@ -88,3 +88,4 @@ class PaymentReportView(generics.ListAPIView):
             qs = qs.filter(paid_at__date__lte=end_date)
 
         return qs
+

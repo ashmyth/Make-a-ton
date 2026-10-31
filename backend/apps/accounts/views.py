@@ -54,3 +54,4 @@ class LogoutView(APIView):
     def post(self, request):
         logout(request)
         return Response({"detail": "Logged out successfully."})
+

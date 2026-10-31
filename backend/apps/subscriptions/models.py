@@ -41,3 +41,4 @@ class Subscription(models.Model):
 
     def __str__(self):
         return f"{self.subscription_number} - {self.customer.display_name} ({self.status})"
+

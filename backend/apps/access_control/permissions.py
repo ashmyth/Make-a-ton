@@ -71,3 +71,4 @@ class CustomerDataIsolation(BasePermission):
             return True
 
         return False
+

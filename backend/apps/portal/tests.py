@@ -160,3 +160,4 @@ class CustomerPortalTests(TestCase):
         req_obj = CustomerRequest.objects.first()
         self.assertEqual(req_obj.request_type, "pause")
         self.assertEqual(req_obj.status, "submitted")
+

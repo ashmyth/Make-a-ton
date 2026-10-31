@@ -53,3 +53,4 @@ class Customer(models.Model):
 
     def __str__(self):
         return f"{self.display_name} ({self.customer_code})"
+

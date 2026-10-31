@@ -51,3 +51,4 @@ def send_payment_receipt_notification(payment):
         sent_at=timezone.now(),
     )
     return log
+

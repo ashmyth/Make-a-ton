@@ -20,3 +20,4 @@ urlpatterns = [
     path("requests/", PortalRequestListCreateView.as_view(), name="portal-requests"),
     path("profile/", PortalProfileView.as_view(), name="portal-profile"),
 ]
+

@@ -107,3 +107,4 @@ class PortalProfileUpdateSerializer(serializers.ModelSerializer):
             "billing_postal_code",
             "billing_country",
         ]
+

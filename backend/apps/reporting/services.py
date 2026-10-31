@@ -98,3 +98,4 @@ def calculate_dashboard_metrics(
             "evaluated_at": str(today),
         }
     }
+

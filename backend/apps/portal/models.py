@@ -45,3 +45,4 @@ class CustomerRequest(models.Model):
 
     def __str__(self):
         return f"{self.customer.display_name} - {self.request_type} ({self.status})"
+

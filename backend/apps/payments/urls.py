@@ -6,3 +6,4 @@ urlpatterns = [
     path("<uuid:id>/", PaymentDetailView.as_view(), name="payment-detail"),
     path("<uuid:id>/reverse/", PaymentReverseView.as_view(), name="payment-reverse"),
 ]
+

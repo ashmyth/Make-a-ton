@@ -228,3 +228,4 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("  Admin Staff:   admin@brightloop.io / AdminSecure@123"))
         self.stdout.write(self.style.SUCCESS("  Customer Acme: alice@acmecorp.com / CustomerSecure@123"))
         self.stdout.write(self.style.SUCCESS("  Customer Cloud: david@cloudscale.io / CustomerSecure@123"))
+

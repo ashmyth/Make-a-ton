@@ -54,3 +54,4 @@ class Invoice(models.Model):
 
     def __str__(self):
         return f"{self.invoice_number} - {self.customer.display_name} ({self.status}: {self.currency} {self.outstanding_balance} due)"
+

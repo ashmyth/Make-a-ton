@@ -31,3 +31,4 @@ class EmailLog(models.Model):
 
     def __str__(self):
         return f"{self.notification_type} to {self.recipient} ({self.status} at {self.sent_at})"
+

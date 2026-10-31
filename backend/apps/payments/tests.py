@@ -151,3 +151,4 @@ class PaymentServiceTests(TestCase):
         self.invoice.refresh_from_db()
         self.assertEqual(self.invoice.outstanding_balance, Decimal("1000.00"))
         self.assertEqual(self.invoice.status, InvoiceStatus.CONFIRMED)
+

@@ -6,3 +6,4 @@ urlpatterns = [
     path("invoices/", InvoiceReportView.as_view(), name="report-invoices"),
     path("payments/", PaymentReportView.as_view(), name="report-payments"),
 ]
+
