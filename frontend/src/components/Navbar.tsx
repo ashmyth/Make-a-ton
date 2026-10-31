@@ -1,6 +1,7 @@
 import React from "react";
 import type { User } from "../api";
 import { LogOut, ArrowRight } from "lucide-react";
+import { Logo } from "./Logo";
 
 interface NavbarProps {
   currentUser: User | null;
@@ -40,24 +41,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <span
-              style={{
-                width: "28px",
-                height: "28px",
-                borderRadius: "9999px",
-                backgroundColor: "var(--color-off-black)",
-                color: "#f6f3f1",
-                fontFamily: "var(--font-mono)",
-                fontWeight: 600,
-                fontSize: "12px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              BL
-            </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <Logo size={24} style={{ color: "var(--color-off-black)" }} />
             <span
               className="font-serif"
               style={{

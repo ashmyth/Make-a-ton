@@ -1,6 +1,27 @@
 import React, { useState } from "react";
 import type { User } from "../api";
+import {
+  LayoutDashboard,
+  Users,
+  FileSpreadsheet,
+  Repeat,
+  Inbox,
+  FileText,
+  CreditCard,
+  AlertOctagon,
+  Package,
+  Layers,
+  Percent,
+  Tag,
+  Copy,
+  Shield,
+  FileCheck,
+  Search,
+  ArrowUpRight,
+  ChevronDown,
+} from "lucide-react";
 
+import { Logo } from "./Logo";
 import { FinanceConsole } from "./FinanceConsole";
 import { CustomerManagement } from "./CustomerManagement";
 import { StaffManagement } from "./StaffManagement";
@@ -37,6 +58,7 @@ export type ConsoleRoute =
 
 export const StaffConsoleShell: React.FC<StaffConsoleShellProps> = ({ currentUser }) => {
   const [activeRoute, setActiveRoute] = useState<ConsoleRoute>("dashboard");
+  const [searchQuery, setSearchQuery] = useState("");
   const isAdmin = currentUser.role === "ADMINISTRATOR";
 
   const renderContent = () => {
@@ -74,7 +96,7 @@ export const StaffConsoleShell: React.FC<StaffConsoleShellProps> = ({ currentUse
     }
   };
 
-  const navItem = (id: ConsoleRoute, label: string, badge?: number) => {
+  const navItem = (id: ConsoleRoute, label: string, Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>, badge?: number) => {
     const isActive = activeRoute === id;
     return (
       <button
@@ -84,27 +106,30 @@ export const StaffConsoleShell: React.FC<StaffConsoleShellProps> = ({ currentUse
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "7px 12px",
-          borderRadius: "8px",
-          backgroundColor: isActive ? "#ffffff" : "transparent",
-          border: isActive ? "1px solid var(--color-ash)" : "1px solid transparent",
-          color: isActive ? "var(--color-off-black)" : "var(--color-graphite)",
-          fontSize: "12px",
+          padding: "9px 14px",
+          borderRadius: "9999px",
+          backgroundColor: isActive ? "var(--color-off-black)" : "transparent",
+          color: isActive ? "#ffffff" : "var(--color-graphite)",
+          border: "none",
+          fontSize: "13px",
           fontFamily: "var(--font-mono)",
           cursor: "pointer",
           textAlign: "left",
-          transition: "all 0.12s ease",
-          marginBottom: "2px",
+          transition: "all 0.15s ease",
+          marginBottom: "3px",
         }}
       >
-        <span>{label}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <Icon size={16} style={{ color: isActive ? "#ffffff" : "var(--color-smoke)" }} />
+          <span style={{ fontWeight: isActive ? 500 : 400 }}>{label}</span>
+        </div>
         {badge !== undefined && badge > 0 && (
           <span
             style={{
-              backgroundColor: "var(--color-coral)",
-              color: "#ffffff",
+              backgroundColor: isActive ? "var(--color-lake-blue)" : "var(--color-periwinkle-mist)",
+              color: isActive ? "#ffffff" : "var(--color-lake-blue)",
               fontSize: "10px",
-              padding: "1px 6px",
+              padding: "2px 7px",
               borderRadius: "9999px",
               fontWeight: 600,
             }}
@@ -117,70 +142,200 @@ export const StaffConsoleShell: React.FC<StaffConsoleShellProps> = ({ currentUse
   };
 
   return (
-    <div style={{ display: "flex", minHeight: "calc(100vh - 57px)", backgroundColor: "var(--color-parchment)" }}>
-      {/* Sidebar Navigation */}
-      <aside
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--color-parchment)" }}>
+      {/* Top Application Bar */}
+      <header
         style={{
-          width: "240px",
-          borderRight: "1px solid var(--color-ash)",
-          padding: "16px 12px",
-          flexShrink: 0,
-          backgroundColor: "rgba(246, 243, 241, 0.7)",
+          height: "64px",
+          padding: "0 32px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottom: "1px solid var(--color-ash)",
+          backgroundColor: "var(--color-parchment)",
         }}
       >
-        <div style={{ marginBottom: "16px" }}>
-          {navItem("dashboard", "Dashboard")}
+        {/* Brand identity */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <Logo size={26} style={{ color: "var(--color-off-black)" }} />
+          <span className="font-serif" style={{ fontSize: "24px", color: "var(--color-off-black)", letterSpacing: "-0.02em" }}>
+            Brightloop
+          </span>
         </div>
 
-        {/* SALES SECTION */}
-        <div style={{ marginBottom: "16px" }}>
-          <div style={{ fontSize: "10px", color: "var(--color-smoke)", textTransform: "uppercase", padding: "0 12px 6px 12px" }}>
-            Sales & Clients
+        {/* Global Search Pill Input */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            backgroundColor: "#ffffff",
+            border: "1px solid var(--color-ash)",
+            borderRadius: "9999px",
+            padding: "8px 18px",
+            width: "380px",
+          }}
+        >
+          <Search size={15} color="var(--color-smoke)" />
+          <input
+            type="text"
+            placeholder="Search customers, invoices..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              border: "none",
+              background: "transparent",
+              color: "var(--color-off-black)",
+              fontSize: "13px",
+              fontFamily: "var(--font-mono)",
+              outline: "none",
+              width: "100%",
+            }}
+          />
+          <kbd
+            style={{
+              fontSize: "10px",
+              padding: "2px 6px",
+              borderRadius: "4px",
+              backgroundColor: "var(--color-parchment)",
+              color: "var(--color-smoke)",
+              border: "1px solid var(--color-ash)",
+            }}
+          >
+            ⌘K
+          </kbd>
+        </div>
+
+        {/* User profile capsule */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div
+            style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "9999px",
+              backgroundColor: "var(--color-periwinkle-mist)",
+              color: "var(--color-lake-blue)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 600,
+              fontSize: "12px",
+            }}
+          >
+            {currentUser.full_name ? currentUser.full_name.charAt(0) : "P"}
           </div>
-          {navItem("customers", "Customers")}
-          {navItem("quotations", "Quotations")}
-          {navItem("subscriptions", "Subscriptions")}
-          {navItem("requests", "Requests", 3)}
-        </div>
-
-        {/* BILLING SECTION */}
-        <div style={{ marginBottom: "16px" }}>
-          <div style={{ fontSize: "10px", color: "var(--color-smoke)", textTransform: "uppercase", padding: "0 12px 6px 12px" }}>
-            Billing & Collections
+          <div style={{ fontSize: "13px", color: "var(--color-off-black)", fontWeight: 500 }}>
+            {currentUser.full_name || currentUser.email} <span style={{ color: "var(--color-smoke)" }}>({currentUser.role})</span>
           </div>
-          {navItem("invoices", "Invoices")}
-          {navItem("payments", "Payments")}
-          {navItem("billing-failures", "Billing Failures", 2)}
+          <ChevronDown size={14} color="var(--color-smoke)" />
         </div>
+      </header>
 
-        {/* CATALOG SECTION */}
-        <div style={{ marginBottom: "16px" }}>
-          <div style={{ fontSize: "10px", color: "var(--color-smoke)", textTransform: "uppercase", padding: "0 12px 6px 12px" }}>
-            Catalog & Rules
-          </div>
-          {navItem("products", "Products")}
-          {navItem("plans", "Plans")}
-          {isAdmin && navItem("taxes", "Taxes")}
-          {isAdmin && navItem("discounts", "Discounts")}
-          {navItem("templates", "Templates")}
-        </div>
-
-        {/* ADMIN SECTION */}
-        {isAdmin && (
-          <div style={{ marginBottom: "16px" }}>
-            <div style={{ fontSize: "10px", color: "var(--color-smoke)", textTransform: "uppercase", padding: "0 12px 6px 12px" }}>
-              Administration
+      {/* Main Body: Sidebar + Workspace */}
+      <div style={{ display: "flex", minHeight: "calc(100vh - 64px)" }}>
+        {/* Sidebar Navigation */}
+        <aside
+          style={{
+            width: "250px",
+            borderRight: "1px solid var(--color-ash)",
+            padding: "24px 16px",
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <div>
+            <div style={{ marginBottom: "20px" }}>
+              {navItem("dashboard", "Dashboard", LayoutDashboard)}
             </div>
-            {navItem("staff", "Staff & Roles")}
-            {navItem("audit", "Audit Log")}
-          </div>
-        )}
-      </aside>
 
-      {/* Main Workspace Area */}
-      <main style={{ flex: 1, padding: "24px 32px", overflowY: "auto", maxWidth: "1280px" }}>
-        {renderContent()}
-      </main>
+            {/* SALES SECTION */}
+            <div style={{ marginBottom: "22px" }}>
+              <div style={{ fontSize: "11px", color: "var(--color-smoke)", textTransform: "uppercase", letterSpacing: "0.05em", padding: "0 14px 8px 14px" }}>
+                SALES
+              </div>
+              {navItem("customers", "Customers", Users)}
+              {navItem("quotations", "Quotations", FileSpreadsheet)}
+              {navItem("subscriptions", "Subscriptions", Repeat)}
+              {navItem("requests", "Requests", Inbox, 3)}
+            </div>
+
+            {/* BILLING SECTION */}
+            <div style={{ marginBottom: "22px" }}>
+              <div style={{ fontSize: "11px", color: "var(--color-smoke)", textTransform: "uppercase", letterSpacing: "0.05em", padding: "0 14px 8px 14px" }}>
+                BILLING
+              </div>
+              {navItem("invoices", "Invoices", FileText)}
+              {navItem("payments", "Payments", CreditCard)}
+              {navItem("billing-failures", "Failures", AlertOctagon, 2)}
+            </div>
+
+            {/* CATALOG SECTION */}
+            <div style={{ marginBottom: "22px" }}>
+              <div style={{ fontSize: "11px", color: "var(--color-smoke)", textTransform: "uppercase", letterSpacing: "0.05em", padding: "0 14px 8px 14px" }}>
+                CATALOG
+              </div>
+              {navItem("products", "Products", Package)}
+              {navItem("plans", "Plans", Layers)}
+              {isAdmin && navItem("taxes", "Taxes", Percent)}
+              {isAdmin && navItem("discounts", "Discounts", Tag)}
+              {navItem("templates", "Templates", Copy)}
+            </div>
+
+            {/* ADMIN SECTION */}
+            {isAdmin && (
+              <div style={{ marginBottom: "20px" }}>
+                <div style={{ fontSize: "11px", color: "var(--color-smoke)", textTransform: "uppercase", letterSpacing: "0.05em", padding: "0 14px 8px 14px" }}>
+                  ADMIN
+                </div>
+                {navItem("staff", "Staff", Shield)}
+                {navItem("audit", "Audit log", FileCheck)}
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Card: Monad Periwinkle Mist Story Capsule */}
+          <div
+            style={{
+              backgroundColor: "var(--color-periwinkle-mist)",
+              border: "1px solid #bfdbfe",
+              borderRadius: "20px",
+              padding: "20px",
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                width: "28px",
+                height: "28px",
+                borderRadius: "9999px",
+                backgroundColor: "var(--color-off-black)",
+                color: "#ffffff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "12px",
+              }}
+            >
+              <ArrowUpRight size={14} />
+            </div>
+            <div className="font-serif" style={{ fontSize: "17px", color: "var(--color-off-black)", lineHeight: "1.25" }}>
+              Less admin.
+              <br />
+              More flow.
+            </div>
+            <div style={{ fontSize: "11px", color: "var(--color-graphite)", marginTop: "8px" }}>
+              • Staff workspace
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Workspace Area */}
+        <main style={{ flex: 1, padding: "32px 40px", overflowY: "auto" }}>
+          {renderContent()}
+        </main>
+      </div>
     </div>
   );
 };
