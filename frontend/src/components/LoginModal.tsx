@@ -36,6 +36,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
     setLoading(true);
 
     try {
+      await api.auth.csrf().catch(() => {});
       if (mode === "signin") {
         const user = await api.auth.login({ email, password });
         onSuccess(user);

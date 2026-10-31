@@ -100,6 +100,12 @@ class LoginView(APIView):
                 user.locked_until = None
                 user.save(update_fields=["failed_login_attempts", "locked_until", "updated_at"])
 
+            if user is not None and not user.is_active and user.check_password(password):
+                return Response(
+                    {"detail": "Account deactivated. Please contact an administrator."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
             authenticated = authenticate(request, email=email, password=password)
             if authenticated is None:
                 authenticated = authenticate(request, username=email, password=password)

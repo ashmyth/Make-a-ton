@@ -13,6 +13,9 @@ export function App() {
   const [, setLoading] = useState(true);
 
   useEffect(() => {
+    // Initialize CSRF cookie from backend
+    api.auth.csrf().catch(() => {});
+
     // Check if session is already active
     api.auth.getMe()
       .then((user) => {
