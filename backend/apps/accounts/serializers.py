@@ -47,8 +47,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.Serializer):
     email = NormalizedEmailField(max_length=254)
     password = serializers.CharField(write_only=True, trim_whitespace=False, max_length=128)
-    first_name = serializers.CharField(max_length=150)
-    last_name = serializers.CharField(max_length=150)
+    first_name = serializers.CharField(max_length=150, required=False, default="")
+    last_name = serializers.CharField(max_length=150, required=False, default="")
 
     def validate_email(self, value: str) -> str:
         if User.objects.filter(email=value).exists():

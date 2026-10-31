@@ -98,3 +98,4 @@ class CustomerCRMTestCase(TestCase):
         self.assertEqual(res.status_code, 200)
         self.customer_a.refresh_from_db()
         self.assertEqual(self.customer_a.status, CustomerStatus.ARCHIVED)
+

@@ -4,7 +4,7 @@ import { api } from "../api";
 import { Check, X, ArrowRight, Building, Lock, Mail, User as UserIcon } from "lucide-react";
 import { Logo } from "./Logo";
 import gsap from "gsap";
-import { animateElasticPress, animateHoverEnter, animateHoverLeave, animateSuccessBounce } from "../lib/animations";
+import { animatePress, animateHoverEnter, animateHoverLeave } from "../lib/animations";
 
 interface AuthSectionProps {
   onSuccess: (user: User) => void;
@@ -43,47 +43,35 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
   const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
   const isPasswordValid = hasMinLength && hasUppercase && hasLowercase && hasSpecial;
 
-  // Staggered Entrance Animation with GSAP Elastic Physics
+  // Clean, linear/power entrance animations (no bouncing)
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Elastic entrance for both columns
       gsap.fromTo(
         leftNarrativeRef.current,
-        { opacity: 0, x: -35, scale: 0.96 },
-        { opacity: 1, x: 0, scale: 1, duration: 0.8, ease: "elastic.out(1, 0.6)" }
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }
       );
 
       gsap.fromTo(
         rightFormCardRef.current,
-        { opacity: 0, x: 35, scale: 0.96 },
-        { opacity: 1, x: 0, scale: 1, duration: 0.85, delay: 0.1, ease: "elastic.out(1, 0.6)" }
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.45, delay: 0.08, ease: "power2.out" }
       );
-
-      // Logo badge playful entrance
-      if (badgeLogoRef.current) {
-        gsap.fromTo(
-          badgeLogoRef.current,
-          { scale: 0, rotation: -90 },
-          { scale: 1, rotation: 0, duration: 0.9, delay: 0.35, ease: "elastic.out(1.4, 0.4)" }
-        );
-      }
     }, containerRef);
 
     return () => ctx.revert();
   }, []);
 
-  // Elastic transition when switching modes
   const handleModeChange = (newMode: "signin" | "register" | "forgot") => {
     if (newMode === mode) return;
     setError(null);
     setSuccessMsg(null);
     
-    // Elastic squash & stretch bounce on mode swap
     if (formContentRef.current) {
       gsap.fromTo(
         formContentRef.current,
-        { opacity: 0.4, y: 12, scale: 0.98 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "elastic.out(1.2, 0.5)" }
+        { opacity: 0.5, y: 6 },
+        { opacity: 1, y: 0, duration: 0.25, ease: "power2.out" }
       );
     }
     setMode(newMode);
@@ -93,7 +81,7 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
-    animateElasticPress(submitButtonRef.current);
+    animatePress(submitButtonRef.current);
 
     setLoading(true);
 
@@ -106,14 +94,6 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
         if (!isPasswordValid) {
           setError("Password does not meet all required security criteria.");
           setLoading(false);
-          // Shake error animation
-          if (rightFormCardRef.current) {
-            gsap.fromTo(
-              rightFormCardRef.current,
-              { x: -8 },
-              { x: 0, duration: 0.4, ease: "elastic.out(1.8, 0.2)" }
-            );
-          }
           return;
         }
         if (password !== confirmPassword) {
@@ -122,20 +102,32 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
           return;
         }
 
+        const nameParts = fullName.trim().split(/\s+/);
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || "";
+
+        await api.auth.register({
+          email,
+          password,
+          first_name: firstName,
+          last_name: lastName,
+          full_name: fullName,
+          company_name: companyName,
+        } as any);
+
         const user = await api.auth.login({ email, password });
         onSuccess(user);
       } else if (mode === "forgot") {
         setSuccessMsg("If that email is registered, a password reset link has been dispatched.");
       }
     } catch (err: any) {
-      setError(err?.message || "Authentication failed. Please verify credentials.");
-      // Elastic rejection wiggle
-      if (rightFormCardRef.current) {
-        gsap.fromTo(
-          rightFormCardRef.current,
-          { x: -10 },
-          { x: 0, duration: 0.4, ease: "elastic.out(1.8, 0.2)" }
-        );
+      if (err?.body && typeof err.body === "object") {
+        const messages = Object.entries(err.body)
+          .map(([key, val]) => `${key}: ${Array.isArray(val) ? val.join(" ") : val}`)
+          .join(" | ");
+        setError(messages || err.message || "Authentication failed.");
+      } else {
+        setError(err?.message || "Authentication failed. Please verify credentials.");
       }
     } finally {
       setLoading(false);
@@ -143,7 +135,7 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
   };
 
   return (
-    <div ref={containerRef} style={{ maxWidth: "1140px", margin: "40px auto", padding: "0 24px" }}>
+    <div ref={containerRef} style={{ maxWidth: "1140px", margin: "0 auto", padding: "0 24px" }}>
       <div
         style={{
           display: "grid",
@@ -152,7 +144,7 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
           alignItems: "stretch",
         }}
       >
-        {/* Left Column: Narrative Card with Elastic Hover Physics */}
+        {/* Left Column: Narrative Card */}
         <div
           ref={leftNarrativeRef}
           onMouseEnter={(e) => animateHoverEnter(e.currentTarget)}
@@ -235,7 +227,6 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
             >
               <div
                 ref={badgeLogoRef}
-                onMouseEnter={() => animateSuccessBounce(badgeLogoRef.current)}
                 style={{
                   width: "48px",
                   height: "48px",
@@ -245,12 +236,13 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  fontWeight: 600,
+                  fontSize: "15px",
                   flexShrink: 0,
-                  cursor: "pointer",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
                 }}
               >
-                <Logo size={20} style={{ color: "#ffffff" }} />
+                <Logo size={22} style={{ color: "#ffffff" }} />
               </div>
               <div>
                 <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--color-off-black)" }}>
@@ -333,8 +325,8 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
             {onCancel && (
               <button
                 onClick={(e) => {
-                  animateElasticPress(e.currentTarget);
-                  setTimeout(onCancel, 200);
+                  animatePress(e.currentTarget);
+                  setTimeout(onCancel, 100);
                 }}
                 style={{
                   background: "transparent",
@@ -354,7 +346,7 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
             )}
           </div>
 
-          {/* Mode Switch Tabs with Physics Slide */}
+          {/* Mode Switch Tabs */}
           {mode !== "forgot" && (
             <div
               style={{
@@ -379,7 +371,7 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
                   fontSize: "13px",
                   cursor: "pointer",
                   boxShadow: mode === "signin" ? "0 2px 6px rgba(0,0,0,0.08)" : "none",
-                  transition: "color 0.2s ease",
+                  transition: "color 0.15s ease",
                 }}
               >
                 Sign In
@@ -398,7 +390,7 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
                   fontSize: "13px",
                   cursor: "pointer",
                   boxShadow: mode === "register" ? "0 2px 6px rgba(0,0,0,0.08)" : "none",
-                  transition: "color 0.2s ease",
+                  transition: "color 0.15s ease",
                 }}
               >
                 Register
@@ -447,7 +439,7 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
             </div>
           )}
 
-          {/* Form with GSAP Mode Animation */}
+          {/* Form */}
           <form
             ref={formContentRef}
             onSubmit={handleSubmit}
@@ -624,16 +616,16 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
                     Security Policy Requirements:
                   </span>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-                    <span style={{ color: hasMinLength ? "#059669" : "var(--color-smoke)", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ color: hasMinLength ? "#166534" : "var(--color-smoke)", display: "flex", alignItems: "center", gap: "6px" }}>
                       {hasMinLength ? <Check size={14} /> : "○"} 9+ characters
                     </span>
-                    <span style={{ color: hasUppercase ? "#059669" : "var(--color-smoke)", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ color: hasUppercase ? "#166534" : "var(--color-smoke)", display: "flex", alignItems: "center", gap: "6px" }}>
                       {hasUppercase ? <Check size={14} /> : "○"} Uppercase letter
                     </span>
-                    <span style={{ color: hasLowercase ? "#059669" : "var(--color-smoke)", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ color: hasLowercase ? "#166534" : "var(--color-smoke)", display: "flex", alignItems: "center", gap: "6px" }}>
                       {hasLowercase ? <Check size={14} /> : "○"} Lowercase letter
                     </span>
-                    <span style={{ color: hasSpecial ? "#059669" : "var(--color-smoke)", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ color: hasSpecial ? "#166534" : "var(--color-smoke)", display: "flex", alignItems: "center", gap: "6px" }}>
                       {hasSpecial ? <Check size={14} /> : "○"} Special character
                     </span>
                   </div>

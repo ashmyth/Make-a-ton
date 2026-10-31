@@ -74,3 +74,4 @@ STATIC_URL = "static/"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 REGISTER_XLSX_PATH = MEDIA_ROOT / "register" / "purchase_register.xlsx"
+

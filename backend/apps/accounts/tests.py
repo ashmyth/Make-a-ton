@@ -124,3 +124,4 @@ class AccountsAuthTestCase(TestCase):
             "password": new_pass,
         })
         self.assertEqual(res_login.status_code, 200)
+

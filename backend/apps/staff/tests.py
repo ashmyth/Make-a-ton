@@ -73,3 +73,4 @@ class StaffManagementTestCase(TestCase):
         self.assertEqual(res.status_code, 400)
         self.admin.refresh_from_db()
         self.assertTrue(self.admin.is_active)
+

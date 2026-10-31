@@ -13,3 +13,4 @@ def download_register(request):
     resp["Content-Disposition"] = 'attachment; filename="purchase_register.xlsx"'
     build_workbook().save(resp)
     return resp
+

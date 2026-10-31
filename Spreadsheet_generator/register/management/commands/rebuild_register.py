@@ -11,3 +11,4 @@ class Command(BaseCommand):
         for oid in Order.objects.values_list("pk", flat=True):
             sync_order(oid)
         self.stdout.write(self.style.SUCCESS(f"Written: {export_workbook()}"))
+

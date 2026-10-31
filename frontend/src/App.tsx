@@ -4,7 +4,6 @@ import { CustomerPortal } from "./components/CustomerPortal";
 import { StaffConsoleShell } from "./components/StaffConsoleShell";
 import { CommercialConsole } from "./components/CommercialConsole";
 import { AuthSection } from "./components/AuthSection";
-import { LoadingScreen } from "./components/LoadingScreen";
 import { api, type User } from "./api";
 
 export function App() {
@@ -30,10 +29,7 @@ export function App() {
         setCurrentUser(null);
       })
       .finally(() => {
-        // Allow a brief moment for the progress bar animation
-        setTimeout(() => {
-          setLoading(false);
-        }, 800);
+        setLoading(false);
       });
   }, []);
 
@@ -44,6 +40,7 @@ export function App() {
       // ignore
     }
     setCurrentUser(null);
+    setActiveView("portal");
   };
 
   const handleLoginSuccess = (user: User) => {
@@ -55,9 +52,23 @@ export function App() {
     }
   };
 
-  // Full-screen Loading Screen with Brand Logo & Progress Bar
   if (loading) {
-    return <LoadingScreen message="Initializing Brightloop workspace..." minDuration={0.8} />;
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "var(--color-parchment)",
+          color: "var(--color-smoke)",
+          fontFamily: "var(--font-mono)",
+          fontSize: "13px",
+        }}
+      >
+        Initializing workspace...
+      </div>
+    );
   }
 
   // Pure Standalone Auth Page (Zero top bar or header elements)
@@ -73,9 +84,14 @@ export function App() {
           justifyContent: "center",
           padding: "40px 20px",
           boxSizing: "border-box",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
-        <main style={{ width: "100%", maxWidth: "1140px" }}>
+        <div className="bg-watermark-overlay" aria-hidden="true">
+          <img src="/logo.svg" alt="" className="bg-watermark-logo" />
+        </div>
+        <main style={{ width: "100%", maxWidth: "1140px", position: "relative", zIndex: 1 }}>
           <AuthSection onSuccess={handleLoginSuccess} />
         </main>
       </div>
@@ -84,26 +100,31 @@ export function App() {
 
   // Authenticated App with Navbar
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--color-parchment)", color: "var(--color-off-black)" }}>
-      <Navbar
-        currentUser={currentUser}
-        activeView={activeView}
-        onSwitchView={(view) => setActiveView(view)}
-        onLogout={handleLogout}
-        onOpenLogin={() => {}}
-      />
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--color-parchment)", color: "var(--color-off-black)", position: "relative", overflowX: "hidden" }}>
+      <div className="bg-watermark-overlay" aria-hidden="true">
+        <img src="/logo.svg" alt="" className="bg-watermark-logo" />
+      </div>
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <Navbar
+          currentUser={currentUser}
+          activeView={activeView}
+          onSwitchView={(view) => setActiveView(view)}
+          onLogout={handleLogout}
+          onOpenLogin={() => setCurrentUser(null)}
+        />
 
-      <main>
-        {activeView === "portal" ? (
-          <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "32px 24px" }}>
-            <CustomerPortal />
-          </div>
-        ) : activeView === "commercial" ? (
-          <CommercialConsole />
-        ) : (
-          <StaffConsoleShell currentUser={currentUser} />
-        )}
-      </main>
+        <main>
+          {activeView === "portal" ? (
+            <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "32px 24px" }}>
+              <CustomerPortal />
+            </div>
+          ) : activeView === "commercial" ? (
+            <CommercialConsole />
+          ) : (
+            <StaffConsoleShell currentUser={currentUser} />
+          )}
+        </main>
+      </div>
     </div>
   );
 }
