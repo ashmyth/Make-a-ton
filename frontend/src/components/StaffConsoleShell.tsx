@@ -156,9 +156,9 @@ export const StaffConsoleShell: React.FC<StaffConsoleShellProps> = ({ currentUse
         }}
       >
         {/* Brand identity */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <Logo size={26} style={{ color: "var(--color-off-black)" }} />
-          <span className="font-serif" style={{ fontSize: "24px", color: "var(--color-off-black)", letterSpacing: "-0.02em" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <Logo size={32} style={{ color: "var(--color-off-black)" }} />
+          <span className="font-serif" style={{ fontSize: "24px", lineHeight: 1, color: "var(--color-off-black)", letterSpacing: "-0.02em" }}>
             Brightloop
           </span>
         </div>

@@ -41,12 +41,13 @@ export const Navbar: React.FC<NavbarProps> = ({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Logo size={24} style={{ color: "var(--color-off-black)" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <Logo size={30} style={{ color: "var(--color-off-black)" }} />
             <span
               className="font-serif"
               style={{
-                fontSize: "22px",
+                fontSize: "23px",
+                lineHeight: 1,
                 color: "var(--color-off-black)",
                 letterSpacing: "-0.02em",
               }}
