@@ -47,7 +47,7 @@ def calculate_dashboard_metrics(
     if end_date:
         invoices_qs = invoices_qs.filter(issue_date__lte=end_date)
 
-    billed_amount_agg = invoices_qs.aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
+    billed_amount_agg = invoices_qs.aggregate(total=Sum("total"))["total"] or Decimal("0.00")
 
     # 4: Cash Collected
     # Recorded succeeded payments in the selected period, net of reversals

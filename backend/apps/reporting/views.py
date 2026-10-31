@@ -38,7 +38,7 @@ class InvoiceReportView(generics.ListAPIView):
     serializer_class = PortalInvoiceSerializer
 
     def get_queryset(self):
-        qs = Invoice.objects.select_related("customer", "subscription").all()
+        qs = Invoice.objects.select_related("customer", "subscription_link").all()
         status_param = self.request.query_params.get("status")
         customer_id = self.request.query_params.get("customer_id")
         is_overdue = self.request.query_params.get("is_overdue")

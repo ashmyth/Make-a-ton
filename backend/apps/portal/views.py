@@ -95,7 +95,7 @@ class PortalInvoiceDownloadView(APIView):
 
     def get(self, request, id):
         try:
-            invoice = Invoice.objects.select_related("customer", "subscription").get(id=id)
+            invoice = Invoice.objects.select_related("customer", "subscription_link").get(id=id)
         except Invoice.DoesNotExist:
             return Response({"detail": "Invoice not found."}, status=status.HTTP_404_NOT_FOUND)
 

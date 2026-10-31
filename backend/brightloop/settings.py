@@ -55,7 +55,7 @@ ROOT_URLCONF = 'brightloop.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -104,3 +104,10 @@ REST_FRAMEWORK = {
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+
+# Billing & Email settings
+BILLING_PAYMENT_MODEL = 'payments.Payment'
+BILLING_COMPANY_NAME = 'Brightloop'
+DEFAULT_FROM_EMAIL = 'billing@brightloop.com'
+EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+

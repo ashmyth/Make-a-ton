@@ -26,7 +26,8 @@ class PortalSubscriptionSerializer(serializers.ModelSerializer):
 
 
 class PortalInvoiceSerializer(serializers.ModelSerializer):
-    subscription_number = serializers.CharField(source="subscription.subscription_number", read_only=True)
+    subscription = serializers.CharField(source="subscription_id", read_only=True)
+    subscription_number = serializers.CharField(read_only=True)
 
     class Meta:
         model = Invoice
@@ -71,6 +72,7 @@ class PortalPaymentSerializer(serializers.ModelSerializer):
 
 
 class CustomerRequestSerializer(serializers.ModelSerializer):
+    subscription = serializers.PrimaryKeyRelatedField(queryset=Subscription.objects.all(), required=True)
     subscription_number = serializers.CharField(source="subscription.subscription_number", read_only=True)
 
     class Meta:
@@ -107,4 +109,3 @@ class PortalProfileUpdateSerializer(serializers.ModelSerializer):
             "billing_postal_code",
             "billing_country",
         ]
-
