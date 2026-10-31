@@ -1,6 +1,15 @@
+import secrets
 import uuid
 from django.conf import settings
-from django.db import models
+from django.db import IntegrityError, models, transaction
+
+CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+CODE_LENGTH = 8
+CODE_PREFIX = "CUST-"
+
+
+def generate_customer_code() -> str:
+    return CODE_PREFIX + "".join(secrets.choice(CODE_ALPHABET) for _ in range(CODE_LENGTH))
 
 
 class CustomerType(models.TextChoices):
@@ -13,7 +22,23 @@ class CustomerStatus(models.TextChoices):
     ARCHIVED = "ARCHIVED", "Archived"
 
 
+class CustomerManager(models.Manager):
+    def create_with_code(self, **fields) -> "Customer":
+        """Create a customer with a unique CUST-XXXXXXXX code (retries on collision)."""
+        for _ in range(10):
+            try:
+                with transaction.atomic():
+                    return self.create(customer_code=generate_customer_code(), **fields)
+            except IntegrityError as exc:
+                if "customer_code" not in str(exc):
+                    raise
+        raise RuntimeError("Could not allocate a unique customer code.")
+
+
 class Customer(models.Model):
+    CustomerType = CustomerType
+    Status = CustomerStatus
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     customer_code = models.CharField(max_length=32, unique=True)
     customer_type = models.CharField(max_length=20, choices=CustomerType.choices, default=CustomerType.BUSINESS)
@@ -43,6 +68,8 @@ class Customer(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    objects = CustomerManager()
+
     class Meta:
         ordering = ["display_name"]
 
@@ -53,4 +80,3 @@ class Customer(models.Model):
 
     def __str__(self):
         return f"{self.display_name} ({self.customer_code})"
-

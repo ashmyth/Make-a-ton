@@ -44,25 +44,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
     }
   };
 
-  const handleQuickLogin = async (quickEmail: string, quickPass: string) => {
-    setEmail(quickEmail);
-    setPassword(quickPass);
-    setLoading(true);
-    setError(null);
-    try {
-      const user = await api.auth.login({ email: quickEmail, password: quickPass });
-      onSuccess(user);
-      onClose();
-    } catch (err: unknown) {
-      setError(formatLoginError(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: "460px" }}>
+      <div className="modal-content" style={{ maxWidth: "420px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div style={{ background: "#fff313", color: "#000000", fontWeight: 700, padding: "2px 6px", borderRadius: "4px", fontSize: "12px" }}>
@@ -80,47 +64,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
             {error}
           </div>
         )}
-
-        {/* Quick Demo Logins */}
-        <div style={{ marginBottom: "20px", background: "#111111", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "12px" }}>
-          <div style={{ fontSize: "11px", color: "#afafaf", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "8px" }}>
-            Quick Demo Accounts:
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin("finance@brightloop.io", "FinanceSecure@123")}
-              className="btn-secondary"
-              style={{ fontSize: "11px", padding: "6px 8px", justifyContent: "center" }}
-            >
-              Finance Staff
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin("admin@brightloop.io", "AdminSecure@123")}
-              className="btn-secondary"
-              style={{ fontSize: "11px", padding: "6px 8px", justifyContent: "center" }}
-            >
-              Admin Staff
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin("alice@acmecorp.com", "CustomerSecure@123")}
-              className="btn-secondary"
-              style={{ fontSize: "11px", padding: "6px 8px", justifyContent: "center", borderColor: "#fff313", color: "#fff313" }}
-            >
-              Customer: Acme Corp
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin("david@cloudscale.io", "CustomerSecure@123")}
-              className="btn-secondary"
-              style={{ fontSize: "11px", padding: "6px 8px", justifyContent: "center", borderColor: "#fff313", color: "#fff313" }}
-            >
-              Customer: CloudScale
-            </button>
-          </div>
-        </div>
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: "14px" }}>

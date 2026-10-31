@@ -2,15 +2,23 @@
 Django settings for brightloop project.
 """
 
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-p*q338n$h5)^92$#=erets#n58p+7&z!nd4bp!2y3j87v6@j=r'
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY',
+    'django-insecure-p*q338n$h5)^92$#=erets#n58p+7&z!nd4bp!2y3j87v6@j=r'
+)
 
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',')
+    if h.strip()
+]
 
 # Application definition
 INSTALLED_APPS = [
@@ -29,6 +37,8 @@ INSTALLED_APPS = [
     'apps.accounts',
     'apps.customers',
     'apps.access_control',
+    'apps.audit',
+    'apps.staff',
     'apps.catalog',
     'apps.subscriptions',
     'apps.billing',
@@ -103,7 +113,14 @@ REST_FRAMEWORK = {
     'COERCE_DECIMAL_TO_STRING': True,
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS & CSRF Configuration
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF & Session settings for same-origin proxy and dev environments
@@ -119,16 +136,11 @@ CSRF_COOKIE_HTTPONLY = False  # Allows frontend JS to read csrftoken cookie for 
 CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SAMESITE = 'Lax'
 
-# Billing & Email settings
-BILLING_PAYMENT_MODEL = 'payments.Payment'
-BILLING_COMPANY_NAME = 'Brightloop'
-DEFAULT_FROM_EMAIL = 'billing@brightloop.com'
-EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
-
+# Reverse proxy support for client IP tracking
+TRUSTED_PROXY_COUNT = int(os.environ.get('TRUSTED_PROXY_COUNT', '1'))
 
 # Billing & Email settings
 BILLING_PAYMENT_MODEL = 'payments.Payment'
 BILLING_COMPANY_NAME = 'Brightloop'
 DEFAULT_FROM_EMAIL = 'billing@brightloop.com'
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
-

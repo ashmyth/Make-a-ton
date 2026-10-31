@@ -1,6 +1,7 @@
 from decimal import Decimal
 from django.db.models import Sum
 from django.http import HttpResponse
+from django.utils.html import escape
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -101,12 +102,36 @@ class PortalInvoiceDownloadView(APIView):
 
         self.check_object_permissions(request, invoice)
 
+        # Sanitize and HTML-escape all user-controlled customer and invoice data to prevent XSS (SEC-01)
+        esc_invoice_number = escape(invoice.invoice_number)
+        esc_status = escape(invoice.status)
+        esc_status_display = escape(invoice.status.replace('_', ' '))
+        esc_display_name = escape(invoice.customer.display_name if invoice.customer else "")
+        esc_contact_person = escape(invoice.customer.contact_person if invoice.customer else "")
+        esc_billing_address = escape(invoice.customer.full_billing_address if invoice.customer else "")
+        esc_email = escape(invoice.customer.email if invoice.customer else "")
+        esc_tax_id = escape(invoice.customer.tax_identifier if invoice.customer and invoice.customer.tax_identifier else "N/A")
+        esc_issue_date = escape(str(invoice.issue_date))
+        esc_due_date = escape(str(invoice.due_date))
+        esc_sub_num = escape(invoice.subscription.subscription_number if invoice.subscription else "Direct")
+        esc_payment_terms = escape(invoice.customer.payment_terms if invoice.customer else "NET_30")
+        esc_plan_name = escape(invoice.subscription.plan_name if invoice.subscription else "Commercial Plan")
+        esc_period_start = escape(str(invoice.service_period_start or invoice.issue_date))
+        esc_period_end = escape(str(invoice.service_period_end or invoice.due_date))
+        esc_currency = escape(invoice.currency)
+        esc_subtotal = escape(str(invoice.subtotal))
+        esc_discount = escape(str(invoice.discount_total))
+        esc_tax = escape(str(invoice.tax_total))
+        esc_total = escape(str(invoice.total_amount))
+        esc_balance = escape(str(invoice.outstanding_balance))
+        balance_color = "#cc0000" if invoice.outstanding_balance > 0 else "#008800"
+
         # Build clean printable invoice HTML with industrial styling
         html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Invoice {invoice.invoice_number}</title>
+<title>Invoice {esc_invoice_number}</title>
 <style>
   body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #ffffff; color: #000000; margin: 40px; line-height: 1.4; }}
   .header {{ display: flex; justify-content: space-between; border-bottom: 2px solid #000000; padding-bottom: 20px; margin-bottom: 30px; }}
@@ -135,9 +160,9 @@ class PortalInvoiceDownloadView(APIView):
       <div style="margin-top: 8px; color: #444444; font-size: 13px;">Automated Subscription & Invoicing Engine</div>
     </div>
     <div>
-      <div class="invoice-title">Invoice #{invoice.invoice_number}</div>
+      <div class="invoice-title">Invoice #{esc_invoice_number}</div>
       <div style="text-align: right; margin-top: 6px;">
-        <span class="status-badge status-{invoice.status}">{invoice.status.replace('_', ' ')}</span>
+        <span class="status-badge status-{esc_status}">{esc_status_display}</span>
       </div>
     </div>
   </div>
@@ -145,18 +170,18 @@ class PortalInvoiceDownloadView(APIView):
   <div class="grid">
     <div>
       <div class="meta-label">Billed To</div>
-      <div class="meta-val" style="font-size: 16px; font-weight: 700;">{invoice.customer.display_name}</div>
-      <div class="meta-val">{invoice.customer.contact_person}</div>
-      <div class="meta-val">{invoice.customer.full_billing_address}</div>
-      <div class="meta-val">{invoice.customer.email}</div>
-      <div class="meta-val">Tax ID: {invoice.customer.tax_identifier or 'N/A'}</div>
+      <div class="meta-val" style="font-size: 16px; font-weight: 700;">{esc_display_name}</div>
+      <div class="meta-val">{esc_contact_person}</div>
+      <div class="meta-val">{esc_billing_address}</div>
+      <div class="meta-val">{esc_email}</div>
+      <div class="meta-val">Tax ID: {esc_tax_id}</div>
     </div>
     <div>
       <div class="meta-label">Invoice Details</div>
-      <div class="meta-val">Issue Date: <strong>{invoice.issue_date}</strong></div>
-      <div class="meta-val">Due Date: <strong>{invoice.due_date}</strong></div>
-      <div class="meta-val">Subscription: <strong>{invoice.subscription.subscription_number if invoice.subscription else 'Direct'}</strong></div>
-      <div class="meta-val">Payment Terms: <strong>{invoice.customer.payment_terms}</strong></div>
+      <div class="meta-val">Issue Date: <strong>{esc_issue_date}</strong></div>
+      <div class="meta-val">Due Date: <strong>{esc_due_date}</strong></div>
+      <div class="meta-val">Subscription: <strong>{esc_sub_num}</strong></div>
+      <div class="meta-val">Payment Terms: <strong>{esc_payment_terms}</strong></div>
     </div>
   </div>
 
@@ -170,9 +195,9 @@ class PortalInvoiceDownloadView(APIView):
     </thead>
     <tbody>
       <tr>
-        <td>Subscription Billing — {invoice.subscription.plan_name if invoice.subscription else 'Commercial Plan'}</td>
-        <td>{invoice.service_period_start or invoice.issue_date} to {invoice.service_period_end or invoice.due_date}</td>
-        <td style="text-align: right;">{invoice.currency} {invoice.subtotal}</td>
+        <td>Subscription Billing — {esc_plan_name}</td>
+        <td>{esc_period_start} to {esc_period_end}</td>
+        <td style="text-align: right;">{esc_currency} {esc_subtotal}</td>
       </tr>
     </tbody>
   </table>
@@ -180,23 +205,23 @@ class PortalInvoiceDownloadView(APIView):
   <div class="totals">
     <div class="totals-row">
       <span>Subtotal:</span>
-      <span>{invoice.currency} {invoice.subtotal}</span>
+      <span>{esc_currency} {esc_subtotal}</span>
     </div>
     <div class="totals-row">
       <span>Discounts:</span>
-      <span>- {invoice.currency} {invoice.discount_total}</span>
+      <span>- {esc_currency} {esc_discount}</span>
     </div>
     <div class="totals-row">
       <span>Tax:</span>
-      <span>+ {invoice.currency} {invoice.tax_total}</span>
+      <span>+ {esc_currency} {esc_tax}</span>
     </div>
     <div class="totals-row grand">
       <span>Total Amount:</span>
-      <span>{invoice.currency} {invoice.total_amount}</span>
+      <span>{esc_currency} {esc_total}</span>
     </div>
-    <div class="totals-row" style="color: {'#cc0000' if invoice.outstanding_balance > 0 else '#008800'}; font-weight: 600; margin-top: 6px;">
+    <div class="totals-row" style="color: {balance_color}; font-weight: 600; margin-top: 6px;">
       <span>Remaining Balance:</span>
-      <span>{invoice.currency} {invoice.outstanding_balance}</span>
+      <span>{esc_currency} {esc_balance}</span>
     </div>
   </div>
 

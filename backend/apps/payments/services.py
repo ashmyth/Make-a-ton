@@ -3,6 +3,8 @@ from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
+from apps.audit.models import AuditAction
+from apps.audit.services import record_audit
 from apps.billing.models import Invoice, InvoiceStatus
 from apps.billing.services.allocation import (
     allocate_payment_to_invoice,
@@ -80,6 +82,22 @@ def record_payment(
     except PaymentAllocationError as exc:
         raise ValidationError(str(exc))
 
+    # 6. Audit Trail: Immutable append-only financial audit log (PRD §4.1, GAP-01)
+    record_audit(
+        action=AuditAction.PAYMENT_RECORDED,
+        actor=recorded_by,
+        entity_type="Payment",
+        entity_id=payment.id,
+        details={
+            "invoice_id": str(invoice.id),
+            "invoice_number": invoice.invoice_number,
+            "amount": str(payment.amount),
+            "currency": payment.currency,
+            "method": payment.method,
+            "idempotency_key": payment.idempotency_key,
+        },
+    )
+
     return payment
 
 
@@ -115,5 +133,19 @@ def reverse_payment(*, payment_id, reversed_by, reason):
         reverse_payment_allocation(invoice.id, payment.amount)
     except PaymentAllocationError as exc:
         raise ValidationError(str(exc))
+
+    # Audit Trail: Immutable append-only reversal audit log (PRD §4.1, GAP-01)
+    record_audit(
+        action=AuditAction.PAYMENT_REVERSED,
+        actor=reversed_by,
+        entity_type="Payment",
+        entity_id=payment.id,
+        details={
+            "invoice_id": str(invoice.id),
+            "invoice_number": invoice.invoice_number,
+            "amount": str(payment.amount),
+            "reason": payment.reversal_reason,
+        },
+    )
 
     return payment

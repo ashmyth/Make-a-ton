@@ -8,6 +8,28 @@ class IsAuthenticatedAndActive(BasePermission):
         return bool(request.user and request.user.is_authenticated and request.user.is_active)
 
 
+class IsAdministrator(BasePermission):
+    """Allows access only to active Administrator staff."""
+    def has_permission(self, request, view):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            request.user.is_active and
+            request.user.role == UserRole.ADMINISTRATOR
+        )
+
+
+class IsOperationsStaff(BasePermission):
+    """Allows access to Operations and Administrator staff."""
+    def has_permission(self, request, view):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            request.user.is_active and
+            request.user.role in [UserRole.ADMINISTRATOR, UserRole.OPERATIONS]
+        )
+
+
 class IsCustomerUser(BasePermission):
     """Allows access only to active Customer portal users."""
     def has_permission(self, request, view):
@@ -71,4 +93,3 @@ class CustomerDataIsolation(BasePermission):
             return True
 
         return False
-

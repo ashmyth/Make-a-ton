@@ -161,3 +161,19 @@ class CustomerPortalTests(TestCase):
         self.assertEqual(req_obj.request_type, "pause")
         self.assertEqual(req_obj.status, "submitted")
 
+    def test_invoice_download_escapes_xss(self):
+        """Invoice download HTML escapes malicious customer input to prevent XSS (SEC-01)."""
+        self.customer_a.display_name = '<script>alert("xss")</script>'
+        self.customer_a.contact_person = '<img src=x onerror=alert(1)>'
+        self.customer_a.save()
+
+        self.client.force_authenticate(user=self.user_a)
+        resp = self.client.get(f"/api/v1/portal/invoices/{self.inv_a.id}/download/")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode("utf-8")
+        self.assertNotIn('<script>alert("xss")</script>', html)
+        self.assertIn('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;', html)
+        self.assertNotIn('<img src=x onerror=alert(1)>', html)
+        self.assertIn('&lt;img src=x onerror=alert(1)&gt;', html)
+
+

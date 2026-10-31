@@ -14,6 +14,8 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from apps.audit.models import AuditAction
+from apps.audit.services import record_audit
 from apps.billing.models import Invoice, InvoiceStatus
 from apps.billing.services.pdf import render_invoice_pdf
 from apps.billing.pipeline import InvoiceSendError, send_invoice
@@ -102,6 +104,14 @@ def invoice_send(request, pk):
         messages.error(request, str(exc))
     else:
         if ok:
+            record_audit(
+                action=AuditAction.INVOICE_SENT,
+                actor=request.user,
+                entity_type="Invoice",
+                entity_id=invoice.id,
+                details={"invoice_number": invoice.invoice_number, "recipient": invoice.customer_email},
+                request=request,
+            )
             messages.success(request, f"{invoice.invoice_number} sent to {invoice.customer_email}.")
         else:
             messages.error(request, "Email failed. See send log below, then try again.")
@@ -124,6 +134,13 @@ def invoice_cancel(request, pk):
     else:
         invoice.status = InvoiceStatus.CANCELLED
         invoice.save(update_fields=["status", "updated_at"])
+        record_audit(
+            action=AuditAction.INVOICE_CANCELLED,
+            actor=request.user,
+            entity_type="Invoice",
+            entity_id=invoice.id,
+            details={"invoice_number": invoice.invoice_number},
+            request=request,
+        )
         messages.success(request, f"Invoice {invoice.invoice_number} has been cancelled.")
     return redirect("billing:invoice_detail", pk=invoice.pk)
-
