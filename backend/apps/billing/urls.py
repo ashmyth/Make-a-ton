@@ -10,3 +10,4 @@ urlpatterns = [
     path("invoices/<uuid:pk>/send/", views.invoice_send, name="invoice_send"),
     path("invoices/<uuid:pk>/cancel/", views.invoice_cancel, name="invoice_cancel"),
 ]
+

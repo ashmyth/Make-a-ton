@@ -38,3 +38,4 @@ class Command(BaseCommand):
 
         for sub_id, err in results["failed"]:
             self.stdout.write(self.style.ERROR(f"  ! Error on Sub {sub_id}: {err}"))
+

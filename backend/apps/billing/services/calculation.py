@@ -131,3 +131,4 @@ def calculate(
         total=quantize_money(agg_total),
         lines=calc_lines,
     )
+

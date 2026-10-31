@@ -122,3 +122,4 @@ def render_invoice_pdf(invoice) -> bytes:
 
     # High-reliability fallback
     return _build_minimal_pdf_bytes(invoice, company_name)
+

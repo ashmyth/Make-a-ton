@@ -39,3 +39,4 @@ def upload_invoice_pdf(invoice, pdf_bytes: bytes) -> str:
     except Exception as exc:
         logger.warning("Supabase upload skipped/failed for invoice %s (%s). Using local path.", invoice.invoice_number, exc)
         return f"local/{file_name}"
+

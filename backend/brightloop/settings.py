@@ -124,3 +124,10 @@ BILLING_COMPANY_NAME = 'Brightloop'
 DEFAULT_FROM_EMAIL = 'billing@brightloop.com'
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
 
+
+# Billing & Email settings
+BILLING_PAYMENT_MODEL = 'payments.Payment'
+BILLING_COMPANY_NAME = 'Brightloop'
+DEFAULT_FROM_EMAIL = 'billing@brightloop.com'
+EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+

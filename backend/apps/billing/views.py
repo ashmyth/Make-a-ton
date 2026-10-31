@@ -126,3 +126,4 @@ def invoice_cancel(request, pk):
         invoice.save(update_fields=["status", "updated_at"])
         messages.success(request, f"Invoice {invoice.invoice_number} has been cancelled.")
     return redirect("billing:invoice_detail", pk=invoice.pk)
+

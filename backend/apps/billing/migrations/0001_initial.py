@@ -125,3 +125,4 @@ class Migration(migrations.Migration):
             constraint=models.UniqueConstraint(condition=models.Q(('period_end__isnull', False), ('period_start__isnull', False), ('subscription_id__gt', ''), models.Q(('status', 'cancelled'), _negated=True)), fields=('subscription_id', 'period_start', 'period_end'), name='unique_subscription_period_invoice'),
         ),
     ]
+

@@ -67,3 +67,4 @@ def send_invoice_email(invoice: Invoice, pdf_bytes: bytes) -> bool:
         invoice.save(update_fields=["email_attempts"])
 
     return success
+

@@ -17,3 +17,4 @@ def next_invoice_number() -> str:
         seq.last_number += 1
         seq.save(update_fields=["last_number"])
         return f"INV-{year}-{seq.last_number:05d}"
+

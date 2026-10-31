@@ -19,3 +19,4 @@ The standalone prototype from `Invoice_Generator/` has been unified into the mai
    - Mounted at `/billing/invoices/`, `/billing/invoices/<id>/`, `/billing/invoices/<id>/pdf/`, etc.
 5. **Automated Test Suite:**
    - Run via: `cd backend && python manage.py test apps.billing.tests`
+

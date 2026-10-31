@@ -58,3 +58,4 @@ def send_invoice(invoice_id, staff_user, resend: bool = False) -> bool:
         invoice.sent_by = staff_user
         invoice.save(update_fields=["status", "sent_by"])
         return True
+
