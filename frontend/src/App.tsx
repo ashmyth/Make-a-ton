@@ -3,14 +3,14 @@ import { Navbar } from "./components/Navbar";
 import { CustomerPortal } from "./components/CustomerPortal";
 import { StaffConsoleShell } from "./components/StaffConsoleShell";
 import { CommercialConsole } from "./components/CommercialConsole";
-import { LoginModal } from "./components/LoginModal";
+import { AuthSection } from "./components/AuthSection";
+import { LoadingScreen } from "./components/LoadingScreen";
 import { api, type User } from "./api";
 
 export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeView, setActiveView] = useState<"portal" | "console" | "commercial">("portal");
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Initialize CSRF cookie from backend
@@ -27,11 +27,13 @@ export function App() {
         }
       })
       .catch(() => {
-        // Not logged in yet
-        setIsLoginModalOpen(true);
+        setCurrentUser(null);
       })
       .finally(() => {
-        setLoading(false);
+        // Allow a brief moment for the progress bar animation
+        setTimeout(() => {
+          setLoading(false);
+        }, 800);
       });
   }, []);
 
@@ -42,7 +44,6 @@ export function App() {
       // ignore
     }
     setCurrentUser(null);
-    setIsLoginModalOpen(true);
   };
 
   const handleLoginSuccess = (user: User) => {
@@ -54,37 +55,55 @@ export function App() {
     }
   };
 
+  // Full-screen Loading Screen with Brand Logo & Progress Bar
+  if (loading) {
+    return <LoadingScreen message="Initializing Brightloop workspace..." minDuration={0.8} />;
+  }
+
+  // Pure Standalone Auth Page (Zero top bar or header elements)
+  if (!currentUser) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          backgroundColor: "var(--color-parchment)",
+          color: "var(--color-off-black)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "40px 20px",
+          boxSizing: "border-box",
+        }}
+      >
+        <main style={{ width: "100%", maxWidth: "1140px" }}>
+          <AuthSection onSuccess={handleLoginSuccess} />
+        </main>
+      </div>
+    );
+  }
+
+  // Authenticated App with Navbar
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "var(--color-parchment)", color: "var(--color-off-black)" }}>
       <Navbar
         currentUser={currentUser}
         activeView={activeView}
-        onSwitchView={setActiveView}
+        onSwitchView={(view) => setActiveView(view)}
         onLogout={handleLogout}
-        onOpenLogin={() => setIsLoginModalOpen(true)}
+        onOpenLogin={() => {}}
       />
 
       <main>
         {activeView === "portal" ? (
-          <div style={{ maxWidth: "1080px", margin: "0 auto", padding: "32px 24px" }}>
+          <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "32px 24px" }}>
             <CustomerPortal />
           </div>
         ) : activeView === "commercial" ? (
           <CommercialConsole />
-        ) : currentUser ? (
-          <StaffConsoleShell currentUser={currentUser} />
         ) : (
-          <div style={{ padding: "40px", textAlign: "center", color: "var(--color-smoke)" }}>
-            Please sign in to access the Staff Console.
-          </div>
+          <StaffConsoleShell currentUser={currentUser} />
         )}
       </main>
-
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-        onSuccess={handleLoginSuccess}
-      />
     </div>
   );
 }
