@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'apps.accounts',
     'apps.customers',
     'apps.access_control',
+    'apps.catalog',
     'apps.subscriptions',
     'apps.billing',
     'apps.payments',
