@@ -7,9 +7,22 @@ __pycache__/
 env/
 venv/
 .venv/
-*.egg-info/
-dist/
+ENV/
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
 # Django
 *.log
@@ -19,6 +32,16 @@ db.sqlite3-journal
 media/
 staticfiles/
 
+# Node / Frontend
+node_modules/
+dist/
+.output/
+.turbo/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
 # Environment
 .env
 .env.local
@@ -27,6 +50,9 @@ staticfiles/
 # IDE & OS
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 .DS_Store
 Thumbs.db
 

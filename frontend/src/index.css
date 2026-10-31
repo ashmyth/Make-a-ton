@@ -1,0 +1,158 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Colors from DESIGN.md */
+  --color-caution-yellow: #fff313;
+  --color-midnight-steel: #000000;
+  --color-industrial-white: #eeeeee;
+  --color-carbon: #333333;
+  --color-gunmetal: #4b4b4b;
+  --color-aluminum: #afafaf;
+  --color-danger: #ff4d4d;
+  --color-success: #00e676;
+
+  /* Typography */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  font-family: var(--font-family);
+  color: var(--color-industrial-white);
+  background-color: var(--color-midnight-steel);
+  line-height: 1.5;
+  font-weight: 400;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--color-midnight-steel);
+  color: var(--color-industrial-white);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #111111;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-gunmetal);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-aluminum);
+}
+
+/* Button & interactive utility classes */
+.btn-yellow {
+  background-color: var(--color-caution-yellow);
+  color: #000000;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-yellow:hover:not(:disabled) {
+  opacity: 0.9;
+}
+.btn-yellow:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: var(--color-carbon);
+  color: var(--color-industrial-white);
+  border: 1px solid var(--color-gunmetal);
+  font-weight: 500;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-secondary:hover:not(:disabled) {
+  background-color: #3f3f3f;
+  border-color: #666666;
+}
+
+.card-carbon {
+  background-color: var(--color-carbon);
+  border: 1px solid var(--color-gunmetal);
+  border-radius: 9px;
+  padding: 20px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.badge-paid {
+  background: rgba(0, 230, 118, 0.15);
+  color: #00e676;
+  border: 1px solid rgba(0, 230, 118, 0.3);
+}
+.badge-partial {
+  background: rgba(255, 243, 19, 0.15);
+  color: #fff313;
+  border: 1px solid rgba(255, 243, 19, 0.3);
+}
+.badge-unpaid {
+  background: rgba(255, 77, 77, 0.15);
+  color: #ff4d4d;
+  border: 1px solid rgba(255, 77, 77, 0.3);
+}
+.badge-active {
+  background: rgba(0, 230, 118, 0.15);
+  color: #00e676;
+  border: 1px solid rgba(0, 230, 118, 0.3);
+}
+.badge-paused {
+  background: rgba(175, 175, 175, 0.15);
+  color: #afafaf;
+  border: 1px solid rgba(175, 175, 175, 0.3);
+}
+
+/* Modal backdrop */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+.modal-content {
+  background-color: #1a1a1a;
+  border: 1px solid var(--color-gunmetal);
+  border-radius: 9px;
+  max-width: 540px;
+  width: 100%;
+  padding: 24px;
+  box-shadow: none;
+}
