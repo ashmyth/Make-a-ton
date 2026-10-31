@@ -92,7 +92,12 @@ class TestCustomerManagement:
         assert client.get(URL, {"customer_type": "BOGUS"}).status_code == 400
 
     def test_list_is_paginated_and_newest_first(self, make_client, ops):
-        customers = [CustomerFactory() for _ in range(3)]
+        import time
+
+        customers = []
+        for _ in range(3):
+            customers.append(CustomerFactory())
+            time.sleep(0.02)
         data = make_client(ops).get(URL, {"page_size": 2}).data
         assert data["count"] == 3 and len(data["results"]) == 2 and data["next"]
         assert data["results"][0]["id"] == str(customers[-1].pk)

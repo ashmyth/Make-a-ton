@@ -19,11 +19,27 @@ def _list(name: str) -> list[str]:
     return [item.strip() for item in os.environ.get(name, "").split(",") if item.strip()]
 
 
+# Load local .env file if present
+_env_file = BASE_DIR / ".env"
+if _env_file.is_file():
+    with open(_env_file, encoding="utf-8") as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+
+
 # --- Core -------------------------------------------------------------------
-SECRET_KEY = os.environ["SECRET_KEY"]
-DEBUG = _bool("DEBUG")
-ALLOWED_HOSTS = _list("ALLOWED_HOSTS")
-CSRF_TRUSTED_ORIGINS = _list("CSRF_TRUSTED_ORIGINS")
+SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-dev-secret-key-brightloop-teammate1")
+DEBUG = _bool("DEBUG", default=True if "SECRET_KEY" not in os.environ else False)
+ALLOWED_HOSTS = _list("ALLOWED_HOSTS") or ["*"]
+CSRF_TRUSTED_ORIGINS = _list("CSRF_TRUSTED_ORIGINS") or [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "http://localhost:5173").rstrip("/")
 
 INSTALLED_APPS = [
@@ -62,10 +78,11 @@ ROOT_URLCONF = "brightloop.urls"
 WSGI_APPLICATION = "brightloop.wsgi.application"
 ASGI_APPLICATION = "brightloop.asgi.application"
 
-# --- Database / cache / sessions (PostgreSQL only, no Redis) ----------------
+# --- Database / cache / sessions (PostgreSQL in production, SQLite fallback) ---
+DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
 DATABASES = {
     "default": dj_database_url.parse(
-        os.environ["DATABASE_URL"], conn_max_age=60, conn_health_checks=True
+        DATABASE_URL, conn_max_age=60, conn_health_checks=True
     )
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

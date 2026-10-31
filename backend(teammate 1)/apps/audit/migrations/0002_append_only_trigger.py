@@ -17,13 +17,15 @@ DROP TRIGGER IF EXISTS brightloop_audit_logs_immutable ON brightloop_audit_logs;
 DROP FUNCTION IF EXISTS brightloop_audit_logs_append_only();
 """
 
-CREATE_SQLITE = """
+CREATE_SQLITE_1 = """
 CREATE TRIGGER IF NOT EXISTS brightloop_audit_logs_no_update
 BEFORE UPDATE ON brightloop_audit_logs
 BEGIN
     SELECT RAISE(ABORT, 'brightloop_audit_logs is append-only');
 END;
+"""
 
+CREATE_SQLITE_2 = """
 CREATE TRIGGER IF NOT EXISTS brightloop_audit_logs_no_delete
 BEFORE DELETE ON brightloop_audit_logs
 BEGIN
@@ -31,22 +33,22 @@ BEGIN
 END;
 """
 
-DROP_SQLITE = """
-DROP TRIGGER IF EXISTS brightloop_audit_logs_no_update;
-DROP TRIGGER IF EXISTS brightloop_audit_logs_no_delete;
-"""
+DROP_SQLITE_1 = "DROP TRIGGER IF EXISTS brightloop_audit_logs_no_update;"
+DROP_SQLITE_2 = "DROP TRIGGER IF EXISTS brightloop_audit_logs_no_delete;"
 
 def apply_trigger(apps, schema_editor):
     if schema_editor.connection.vendor == "postgresql":
         schema_editor.execute(CREATE_PG)
     elif schema_editor.connection.vendor == "sqlite":
-        schema_editor.execute(CREATE_SQLITE)
+        schema_editor.execute(CREATE_SQLITE_1)
+        schema_editor.execute(CREATE_SQLITE_2)
 
 def remove_trigger(apps, schema_editor):
     if schema_editor.connection.vendor == "postgresql":
         schema_editor.execute(DROP_PG)
     elif schema_editor.connection.vendor == "sqlite":
-        schema_editor.execute(DROP_SQLITE)
+        schema_editor.execute(DROP_SQLITE_1)
+        schema_editor.execute(DROP_SQLITE_2)
 
 
 class Migration(migrations.Migration):

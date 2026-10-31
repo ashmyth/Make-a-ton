@@ -12,7 +12,7 @@ class CIEmailField(models.EmailField):
     def db_type(self, connection) -> str:
         if connection.vendor == "postgresql":
             return "citext"
-        return "varchar(254)"
+        return "varchar(254) COLLATE NOCASE"
 
     def get_internal_type(self) -> str:
         return "EmailField"

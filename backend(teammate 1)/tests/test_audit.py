@@ -11,7 +11,10 @@ AUDIT = "/api/v1/audit/"
 @pytest.mark.django_db
 class TestAuditApi:
     def test_admin_lists_newest_first_with_actor_email(self, make_client, admin):
+        import time
+
         record_audit(action="A_FIRST", actor=admin, entity_type="User", entity_id=admin.pk)
+        time.sleep(0.02)
         record_audit(action="B_SECOND", actor=admin, entity_type="User", entity_id=admin.pk)
         rows = make_client(admin).get(AUDIT).data["results"]
         actions = [r["action"] for r in rows if r["action"] in {"A_FIRST", "B_SECOND"}]
@@ -67,6 +70,7 @@ class TestAuditImmutability:
 
     def test_database_trigger_blocks_raw_sql_tampering(self):
         entry = record_audit(action="X_ONE")
+        pk_param = entry.pk.hex if connection.vendor == "sqlite" else entry.pk
         for sql in (
             "UPDATE brightloop_audit_logs SET action = 'TAMPERED' WHERE id = %s",
             "DELETE FROM brightloop_audit_logs WHERE id = %s",
@@ -76,7 +80,7 @@ class TestAuditImmutability:
                 transaction.atomic(),
                 connection.cursor() as cursor,
             ):
-                cursor.execute(sql, [entry.pk])
+                cursor.execute(sql, [pk_param])
         assert AuditLog.objects.get(pk=entry.pk).action == "X_ONE"
 
     def test_actor_with_history_cannot_be_deleted(self):
