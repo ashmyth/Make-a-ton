@@ -41,7 +41,7 @@ Production runs **three processes** (Caddy, web, worker) and **two stateful syst
 | Money math | Backend preview endpoint only | §8: same calculation service for previews and invoices |
 | Reverse proxy | Caddy | Same-origin serving, automatic TLS, no CORS |
 | Backend | Django 5 + Django REST Framework, modular monolith | Financial logic, RBAC, atomic writes |
-| Domain apps | `identity`, `catalog`, `subscriptions`, `billing`, `payments`, `reporting`, `audit` (boundaries enforced by import-linter) | Clear ownership, testable services |
+| Domain apps | `identity`, `catalog`, `subscriptions`, `billing`, `payments`, `reporting`, `audit` (boundaries enforced by import-linter: `identity`/`catalog` → `subscriptions` → `billing` → `payments` → `reporting`) | Clear ownership, testable services, acyclic dependency graph |
 | Database | PostgreSQL | See section 3 |
 | Background jobs | Procrastinate (Postgres-backed, Django integration) | BILL-01 to BILL-05 |
 | Sessions and cache | Django database sessions and DB cache backend | AUTH-06, DRF throttling; no Redis |
@@ -55,7 +55,9 @@ Production runs **three processes** (Caddy, web, worker) and **two stateful syst
 
 ---
 
-## 3. How PostgreSQL Satisfies the Billing Rules
+## 3. How PostgreSQL Satisfies Financial & Billing Rules
+
+### 3.1 Recurring Billing Rules (Teammate 3)
 
 | Requirement | Mechanism |
 | --- | --- |
@@ -70,10 +72,20 @@ Production runs **three processes** (Caddy, web, worker) and **two stateful syst
 | Missed periods after downtime (BILL-06) | Sweep recomputes due periods from the database; one invoice per period |
 | Discount usage limits under parallel jobs | Reservation rows guarded by row locks (never in-memory counters) |
 | Immutable confirmed invoices | Snapshot columns, FSM-guarded status, DB trigger blocking financial updates |
-| Payment corrections | Append-only ledger; balance is derived, never edited |
-| Customer data isolation | Scoped querysets, DRF permission classes, Postgres row-level security |
-| Dashboard reconciles with records | Live indexed SQL aggregates; no cached totals |
-| Exact money | `numeric` columns with CHECK constraints (non-negative amounts, `start <= expiry`) |
+
+### 3.2 Payment & Allocation Rules (Teammate 4)
+
+| Requirement | Mechanism |
+| --- | --- |
+| Invoice-first allocation (PAY-01) | Invoices are created first by billing sweeps; payments are allocated to existing confirmed invoices (`Payment.invoice_id` with `on_delete=PROTECT`). Payments never generate invoices. |
+| Idempotent payment recording (PAY-02) | Unique constraint on `Payment.idempotency_key` prevents double-recording from duplicate clicks, retries, or replays. |
+| Overpayment prevention (PAY-03) | `CHECK (outstanding_balance >= 0)` on `Invoice` + `select_for_update()` row-level lock on `Invoice` during payment recording. |
+| Audited reversals (PAY-04) | Payments cannot be deleted; corrections use append-only reversal records (`is_reversed`, `reversed_at`, `reversed_by`, `reversal_reason`) tracked via `django-pghistory`. |
+| Atomic balance & status sync (PAY-05) | Payment creation or reversal executes in a single transaction that updates the payment ledger and atomically recalculates `Invoice.outstanding_balance` and `Invoice.status`. |
+| Gateway-ready data schema (PAY-06) | `Payment` stores `method`, `amount`, `currency`, and `external_reference` (indexed for future gateway webhook IDs, bank UTR, or cheque numbers) allowing V2 gateway adapters without core schema changes. |
+| Customer data isolation | Scoped querysets, DRF permission classes, Postgres row-level security ensuring portal users only access their own invoices/payments. |
+| Dashboard reconciles with records | Live indexed SQL aggregates (`SUM(Payment.amount)` for cash collected, `SUM(Invoice.outstanding_balance)` for receivables); no cached totals. |
+| Exact money | `numeric` columns with CHECK constraints (non-negative amounts, `start <= expiry`). |
 
 ---
 
@@ -98,6 +110,8 @@ Each item gets an ADR stating the decision, the reason, the approving owner, and
 | Refunds and credit notes | Out of scope; payment reversals only | New ledger entry type |
 | Plan vs product pricing | PRD §7.4 rule as written | `pricing` service and golden tests |
 | Pause/resume adjustments | Pause stops future invoices; no credits issued | Policy interface |
+| Invoice & Payment sequence | Invoices are generated first (by billing sweeps or quotation conversion); payments are allocated to existing confirmed invoices. Payments never generate draft invoices. | Workstream workflow contract |
+| Payment gateway scope | V1 uses staff recording and manual bank transfers with an idempotent, gateway-ready data model. Live gateways and webhooks are pluggable adapters deferred to V2 per PRD §5.2. | `PaymentGatewayAdapter` interface |
 
 ---
 
@@ -155,15 +169,15 @@ Each item gets an ADR stating the decision, the reason, the approving owner, and
 | Frontend money calculation | JS floats drift from backend decimals |
 | GraphQL | REST with OpenAPI gives simpler permissions and typed clients here |
 | Kubernetes | Operational cost outweighs benefit at this scale |
-| Payment gateway / accounting integrations | Excluded by PRD §5.2; the append-only ledger leaves room to add later |
+| Payment gateway (live webhooks) in V1 | Excluded by PRD §5.2 to avoid webhook/tunnel fragility during MVP; append-only schema is gateway-ready for V2 |
 
 ---
 
 ## 10. Suggested Build Order
 
 1. Domain models, constraints, and the calculation service, with property tests.
-2. Billing engine: idempotency, same-transaction job enqueue, concurrency tests.
-3. Payments ledger and invoice state machine.
+2. Billing engine: recurring billing sweep, invoice generation, idempotency, same-transaction job enqueue.
+3. Payments ledger & allocation service: idempotent payment recording against confirmed invoices, atomic balance updates, reversals, and customer portal views.
 4. API layer with permissions and generated client.
 5. Frontend console and customer portal.
 6. Observability, load tests, and CI hardening.

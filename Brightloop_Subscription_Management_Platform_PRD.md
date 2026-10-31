@@ -454,6 +454,17 @@ Jurisdiction-based tax compliance, compound taxes, exemptions, and tax-inclusive
 
 **Required payment information:** method, amount, date, note, and the invoice receiving the payment.
 
+**Proposed implementation requirements:**
+
+| ID | Requirement |
+| --- | --- |
+| PAY-01 | **Invoice-first allocation:** Payments are allocated strictly to existing confirmed invoices; payments never generate invoices. |
+| PAY-02 | **Idempotent recording:** Enforce idempotency via a unique `idempotency_key` on all payment submissions to prevent duplicate recording from retries or double clicks. |
+| PAY-03 | **Overpayment protection:** Reject any payment allocation that exceeds the target invoice's remaining `outstanding_balance`. Enforce row-level locking during allocation. |
+| PAY-04 | **Immutable ledger & audited reversals:** Recorded payments cannot be permanently deleted. Corrections require an audited reversal record restoring invoice balance. |
+| PAY-05 | **Atomic balance & status sync:** Allocations and reversals atomically update `invoice.outstanding_balance` and status (`Confirmed` ↔ `Partially paid` ↔ `Paid`). |
+| PAY-06 | **Gateway-ready schema:** Store payment method, currency, and optional external references (bank UTR, cheque number, or future gateway payment ID) to support automated gateways in V2 without schema redesign. |
+
 **Proposed behavior:**
 
 - Allow multiple payments against one invoice.
