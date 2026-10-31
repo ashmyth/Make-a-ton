@@ -78,5 +78,9 @@ class Customer(models.Model):
         parts = [self.billing_street, self.billing_city, self.billing_state, self.billing_postal_code, self.billing_country]
         return ", ".join([p for p in parts if p])
 
+    @property
+    def name(self) -> str:
+        return self.display_name
+
     def __str__(self):
         return f"{self.display_name} ({self.customer_code})"

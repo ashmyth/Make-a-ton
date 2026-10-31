@@ -116,3 +116,30 @@ class ReportingMetricCalculationTests(TestCase):
         # Outstanding balance is now 5,000 + 3,000 = 8,000
         self.assertEqual(metrics["outstanding_balance"], Decimal("8000.00"))
 
+    def test_export_invoices_xlsx(self):
+        """Export invoices workbook returns valid XLSX content-type."""
+        from django.test import Client
+        client = Client()
+        client.force_login(self.staff_user)
+        response = client.get("/api/v1/reporting/invoices/export/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn("invoices_register.xlsx", response["Content-Disposition"])
+        self.assertGreater(len(response.content), 1000)
+
+    def test_export_payments_xlsx(self):
+        """Export payments workbook returns valid XLSX content-type."""
+        from django.test import Client
+        client = Client()
+        client.force_login(self.staff_user)
+        response = client.get("/api/v1/reporting/payments/export/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn("payments_register.xlsx", response["Content-Disposition"])
+        self.assertGreater(len(response.content), 1000)

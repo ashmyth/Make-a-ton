@@ -1,13 +1,15 @@
-from django.core.management.base import BaseCommand
+#!/usr/bin/env python
+import os
+import sys
 
-from register.services import export_workbook, sync_order
-from sales.models import Order
+if __name__ == "__main__":
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+    import django
+    django.setup()
 
+    from register.services import export_workbook, sync_order
+    from sales.models import Order
 
-class Command(BaseCommand):
-    help = "Backfill register from all orders and rewrite the xlsx."
-
-    def handle(self, *args, **opts):
-        for oid in Order.objects.values_list("pk", flat=True):
-            sync_order(oid)
-        self.stdout.write(self.style.SUCCESS(f"Written: {export_workbook()}"))
+    for oid in Order.objects.values_list("pk", flat=True):
+        sync_order(oid)
+    print(f"Written: {export_workbook()}")

@@ -5,9 +5,19 @@ import apps.accounts.models
 import django.db.models.deletion
 import uuid
 
-from django.contrib.postgres.operations import CITextExtension
 from django.conf import settings
 from django.db import migrations, models
+
+try:
+    from django.contrib.postgres.operations import CITextExtension
+except Exception:
+    class CITextExtension(migrations.operations.base.Operation):
+        def database_forwards(self, app_label, schema_editor, from_state, to_state):
+            pass
+        def database_backwards(self, app_label, schema_editor, from_state, to_state):
+            pass
+        def state_forwards(self, app_label, state):
+            pass
 
 
 class Migration(migrations.Migration):

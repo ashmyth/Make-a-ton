@@ -1,6 +1,7 @@
 """Brightloop settings. Every environment-specific value comes from env vars."""
 
 import os
+import sys
 from pathlib import Path
 
 import dj_database_url
@@ -46,7 +47,6 @@ INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
-    "django.contrib.postgres",
     "rest_framework",
     "drf_spectacular",
     "apps.access_control",
@@ -55,6 +55,17 @@ INSTALLED_APPS = [
     "apps.staff",
     "apps.customers",
 ]
+
+try:
+    import psycopg  # noqa
+    INSTALLED_APPS.append("django.contrib.postgres")
+except ImportError:
+    try:
+        import psycopg2  # noqa
+        INSTALLED_APPS.append("django.contrib.postgres")
+    except ImportError:
+        pass
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -105,7 +116,8 @@ CSRF_COOKIE_SAMESITE = "Lax"
 # --- Reverse proxy (Caddy) --------------------------------------------------
 # Number of trusted proxies in front of Django. 0 = use REMOTE_ADDR only.
 TRUSTED_PROXY_COUNT = int(os.environ.get("TRUSTED_PROXY_COUNT", "0"))
-SECURE_SSL_REDIRECT = _bool("SECURE_SSL_REDIRECT", not DEBUG)
+_IS_TESTING = "test" in sys.argv or "pytest" in sys.modules
+SECURE_SSL_REDIRECT = _bool("SECURE_SSL_REDIRECT", False if _IS_TESTING else not DEBUG)
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", 31536000))

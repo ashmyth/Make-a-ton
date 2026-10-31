@@ -1,13 +1,18 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import generics
+from django.http import HttpResponse
 from django.utils import timezone
 from apps.access_control.permissions import IsFinanceStaff
 from apps.billing.models import Invoice, InvoiceStatus
 from apps.payments.models import Payment
 from apps.payments.serializers import PaymentSerializer
 from apps.portal.serializers import PortalInvoiceSerializer
-from .services import calculate_dashboard_metrics
+from .services import (
+    calculate_dashboard_metrics,
+    build_invoices_workbook,
+    build_payments_workbook,
+)
 
 
 class DashboardMetricsView(APIView):
@@ -88,4 +93,73 @@ class PaymentReportView(generics.ListAPIView):
             qs = qs.filter(paid_at__date__lte=end_date)
 
         return qs
+
+
+class ExportInvoicesXlsxView(generics.GenericAPIView):
+    """Generates an Excel workbook (.xlsx) of invoices for finance staff."""
+    permission_classes = [IsFinanceStaff]
+
+    def get(self, request):
+        qs = Invoice.objects.select_related("customer", "subscription_link").all()
+        status_param = request.query_params.get("status")
+        customer_id = request.query_params.get("customer_id")
+        is_overdue = request.query_params.get("is_overdue")
+        start_date = request.query_params.get("start_date")
+        end_date = request.query_params.get("end_date")
+
+        if status_param:
+            qs = qs.filter(status=status_param)
+        if customer_id:
+            qs = qs.filter(customer_id=customer_id)
+        if start_date:
+            qs = qs.filter(issue_date__gte=start_date)
+        if end_date:
+            qs = qs.filter(issue_date__lte=end_date)
+        if is_overdue and is_overdue.lower() in ["true", "1"]:
+            today = timezone.now().date()
+            qs = qs.filter(
+                status__in=[InvoiceStatus.CONFIRMED, InvoiceStatus.PARTIALLY_PAID],
+                due_date__lt=today,
+            )
+
+        wb = build_invoices_workbook(qs)
+        resp = HttpResponse(
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        resp["Content-Disposition"] = 'attachment; filename="invoices_register.xlsx"'
+        wb.save(resp)
+        return resp
+
+
+class ExportPaymentsXlsxView(generics.GenericAPIView):
+    """Generates an Excel workbook (.xlsx) of payments for finance staff."""
+    permission_classes = [IsFinanceStaff]
+
+    def get(self, request):
+        qs = Payment.objects.select_related("invoice", "customer", "recorded_by").all()
+        method = request.query_params.get("method")
+        customer_id = request.query_params.get("customer_id")
+        is_reversed = request.query_params.get("is_reversed")
+        start_date = request.query_params.get("start_date")
+        end_date = request.query_params.get("end_date")
+
+        if method:
+            qs = qs.filter(method=method)
+        if customer_id:
+            qs = qs.filter(customer_id=customer_id)
+        if is_reversed is not None:
+            qs = qs.filter(is_reversed=(is_reversed.lower() in ["true", "1"]))
+        if start_date:
+            qs = qs.filter(paid_at__date__gte=start_date)
+        if end_date:
+            qs = qs.filter(paid_at__date__lte=end_date)
+
+        wb = build_payments_workbook(qs)
+        resp = HttpResponse(
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        resp["Content-Disposition"] = 'attachment; filename="payments_register.xlsx"'
+        wb.save(resp)
+        return resp
+
 

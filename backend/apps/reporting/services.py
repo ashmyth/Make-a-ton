@@ -99,3 +99,118 @@ def calculate_dashboard_metrics(
         }
     }
 
+
+def build_invoices_workbook(invoices_qs):
+    """
+    Builds an openpyxl Workbook from a queryset of Invoices.
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Invoices Register"
+
+    columns = [
+        ("Invoice Number", "invoice_number"),
+        ("Issue Date", "issue_date"),
+        ("Due Date", "due_date"),
+        ("Customer", "customer_name"),
+        ("Email", "customer_email"),
+        ("Status", "status"),
+        ("Subtotal", "subtotal"),
+        ("Tax Total", "tax_total"),
+        ("Discount Total", "discount_total"),
+        ("Grand Total", "total"),
+        ("Paid Amount", "amount_paid"),
+        ("Outstanding Balance", "outstanding_balance"),
+    ]
+
+    header_fill = PatternFill("solid", fgColor="1F4E78")
+    ws.append([col[0] for col in columns])
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = header_fill
+    ws.freeze_panes = "A2"
+
+    for inv in invoices_qs:
+        row = [
+            inv.invoice_number,
+            str(inv.issue_date) if inv.issue_date else "",
+            str(inv.due_date) if inv.due_date else "",
+            inv.customer_name,
+            inv.customer_email,
+            inv.status,
+            float(inv.subtotal),
+            float(inv.tax_total),
+            float(inv.discount_total),
+            float(inv.total),
+            float(inv.amount_paid),
+            float(inv.outstanding_balance),
+        ]
+        ws.append(row)
+
+    for i, (title, _) in enumerate(columns, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = max(14, len(title) + 4)
+    ws.auto_filter.ref = ws.dimensions
+    return wb
+
+
+def build_payments_workbook(payments_qs):
+    """
+    Builds an openpyxl Workbook from a queryset of Payments.
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Payments Register"
+
+    columns = [
+        ("Payment ID", "id"),
+        ("Payment Date", "paid_at"),
+        ("Invoice Number", "invoice_number"),
+        ("Customer", "customer_name"),
+        ("Method", "method"),
+        ("Amount", "amount"),
+        ("Currency", "currency"),
+        ("Status", "status"),
+        ("Reversed", "is_reversed"),
+        ("External Reference", "external_reference"),
+        ("Note", "note"),
+    ]
+
+    header_fill = PatternFill("solid", fgColor="1F4E78")
+    ws.append([col[0] for col in columns])
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = header_fill
+    ws.freeze_panes = "A2"
+
+    for pay in payments_qs:
+        inv_no = pay.invoice.invoice_number if pay.invoice else ""
+        cust_name = getattr(pay.customer, "display_name", "") if pay.customer else ""
+        paid_at_str = pay.paid_at.strftime("%Y-%m-%d %H:%M:%S") if pay.paid_at else ""
+        row = [
+            str(pay.id),
+            paid_at_str,
+            inv_no,
+            cust_name,
+            pay.method,
+            float(pay.amount),
+            pay.currency,
+            pay.status,
+            "Yes" if pay.is_reversed else "No",
+            pay.external_reference or "",
+            getattr(pay, "notes", "") or getattr(pay, "note", "") or "",
+        ]
+        ws.append(row)
+
+    for i, (title, _) in enumerate(columns, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = max(14, len(title) + 4)
+    ws.auto_filter.ref = ws.dimensions
+    return wb
+
