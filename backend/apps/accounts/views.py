@@ -190,6 +190,7 @@ class RegisterView(APIView):
                 {"email": ["A user with this email already exists."]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        login(request, user, backend="apps.accounts.backends.BrightloopBackend")
         return Response(UserProfileSerializer(user).data, status=status.HTTP_201_CREATED)
 
 

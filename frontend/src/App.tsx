@@ -116,7 +116,7 @@ export function App() {
         <main>
           {activeView === "portal" ? (
             <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "32px 24px" }}>
-              <CustomerPortal />
+              <CustomerPortal key={currentUser?.id ?? "anonymous"} onOpenLogin={() => setCurrentUser(null)} />
             </div>
           ) : activeView === "commercial" ? (
             <CommercialConsole />

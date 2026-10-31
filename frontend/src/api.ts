@@ -449,7 +449,7 @@ export const api = {
         method: "POST",
         body: JSON.stringify(credentials),
       }),
-    register: (data: { email: string; password: string; full_name?: string; company_name?: string; phone?: string }) =>
+    register: (data: { email: string; password: string; full_name?: string; company_name?: string; phone?: string; first_name?: string; last_name?: string }) =>
       apiRequest<User>("/auth/register/", {
         method: "POST",
         body: JSON.stringify(data),

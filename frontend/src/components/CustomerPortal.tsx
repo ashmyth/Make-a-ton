@@ -32,7 +32,11 @@ function formatApiError(err: unknown, fallback: string): string {
   return fallback;
 }
 
-export const CustomerPortal: React.FC = () => {
+interface CustomerPortalProps {
+  onOpenLogin?: () => void;
+}
+
+export const CustomerPortal: React.FC<CustomerPortalProps> = ({ onOpenLogin }) => {
   const [overview, setOverview] = useState<PortalOverviewData | null>(null);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -157,16 +161,30 @@ export const CustomerPortal: React.FC = () => {
   }
 
   if (error && !overview) {
+    const isAuthError = error.toLowerCase().includes("authentication") || error.toLowerCase().includes("logged in");
     return (
       <div style={{ maxWidth: "800px", margin: "40px auto", padding: "24px" }} className="card-carbon">
-        <div style={{ display: "flex", gap: "12px", alignItems: "center", color: "#ff4d4d", marginBottom: "16px" }}>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center", color: isAuthError ? "#f59e0b" : "#ff4d4d", marginBottom: "16px" }}>
           <AlertCircle size={24} />
-          <h2 style={{ fontSize: "18px", fontWeight: 600 }}>Portal Access Restricted</h2>
+          <h2 style={{ fontSize: "18px", fontWeight: 600 }}>
+            {isAuthError ? "Sign In Required" : "Portal Access Restricted"}
+          </h2>
         </div>
-        <p style={{ color: "#afafaf", fontSize: "14px", marginBottom: "20px" }}>{error}</p>
-        <button onClick={fetchPortalData} className="btn-yellow">
-          Retry Access
-        </button>
+        <p style={{ color: "#afafaf", fontSize: "14px", marginBottom: "20px" }}>
+          {isAuthError
+            ? "Please sign in or create an account to view your customer portal, active subscriptions, and invoices."
+            : error}
+        </p>
+        <div style={{ display: "flex", gap: "12px" }}>
+          {onOpenLogin && (
+            <button onClick={onOpenLogin} className="btn-yellow">
+              Sign In / Register
+            </button>
+          )}
+          <button onClick={fetchPortalData} className="btn-secondary" style={{ padding: "8px 16px", borderRadius: "6px" }}>
+            Retry Access
+          </button>
+        </div>
       </div>
     );
   }
